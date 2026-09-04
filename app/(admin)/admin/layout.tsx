@@ -8,6 +8,7 @@ const TABS = [
   { href: '/admin', label: 'Setup' },
   { href: '/admin/structure', label: 'Departments and roles' },
   { href: '/admin/content', label: 'Sections' },
+  { href: '/admin/contacts', label: 'Who to ask' },
   { href: '/admin/rules', label: 'Who sees what' },
   { href: '/admin/health', label: 'Gaps and health' },
   { href: '/admin/queue', label: 'Reports and audit' },

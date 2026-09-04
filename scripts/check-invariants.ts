@@ -28,6 +28,9 @@ const ACCESS_RULE_READERS = [
   'lib/setup/checklist.ts',
   // Counts rules that name a dimension, to refuse an unsafe archive.
   'lib/dimensions/manage.ts',
+  // Existence check only: warns the author when no allow rule anywhere in a
+  // page's ancestry reaches anybody. It never decides a reader's access.
+  'app/(admin)/admin/content/page.tsx',
 ];
 
 const ROOTS = ['app', 'lib', 'components', 'worker', 'scripts'];

@@ -2,7 +2,32 @@ import type { Sql } from 'postgres';
 import { cookies } from 'next/headers';
 import { hashToken, newToken, pseudonymise } from './tokens';
 
-export const SESSION_COOKIE = '__Host-wwsession';
+/**
+ * The session cookie name depends on the deployment's scheme, and deliberately
+ * so.
+ *
+ * Over HTTPS it is `__Host-` prefixed and `Secure`: the strongest available
+ * binding, refusing any cookie set from a non-secure origin or scoped to a
+ * parent domain.
+ *
+ * Over plain HTTP a `Secure` cookie is simply never stored, so login fails
+ * silently. That is not a hypothetical: the spec's premise is a small company
+ * evaluating the product from one `docker compose up`, and an internal LAN
+ * deployment at http://10.0.0.5:3000 is the common shape of that. Rather than
+ * appear broken, an http BASE_URL gets an unprefixed, non-Secure cookie — and
+ * lib/env.ts warns at boot that sessions are exposed in transit.
+ *
+ * The name changes with the scheme, so moving a deployment from http to https
+ * invalidates existing sessions rather than silently carrying an insecure
+ * cookie forward.
+ */
+function isSecureDeployment(): boolean {
+  return (process.env.BASE_URL ?? '').startsWith('https://');
+}
+
+export const SESSION_COOKIE = isSecureDeployment()
+  ? '__Host-wwsession'
+  : 'wwsession';
 
 /** Sliding expiry with an absolute cap (spec §11). */
 const SLIDING_MS = 1000 * 60 * 60 * 12; // 12 hours of inactivity
@@ -75,7 +100,9 @@ export async function setSessionCookie(token: string) {
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: true,
+    // Only meaningful over https; setting it on an http deployment would stop
+    // the cookie being stored at all.
+    secure: isSecureDeployment(),
     sameSite: 'lax',
     path: '/',
     maxAge: Math.floor(ABSOLUTE_MS / 1000),

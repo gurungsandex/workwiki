@@ -122,6 +122,35 @@ export function parseEnv(raw: NodeJS.ProcessEnv = process.env): Env {
 
 let cached: Env | null = null;
 export function env(): Env {
-  if (!cached) cached = parseEnv();
+  if (!cached) {
+    cached = parseEnv();
+    warnAboutInsecureTransport(cached);
+  }
   return cached;
+}
+
+let warned = false;
+
+/**
+ * An http BASE_URL means the session cookie cannot carry `Secure`, so the
+ * session token crosses the wire in the clear. That is a legitimate way to
+ * evaluate the product on a laptop or an internal LAN, and a bad way to run it
+ * for real — so it works, loudly, rather than failing in a way that looks like
+ * a bug.
+ */
+function warnAboutInsecureTransport(e: Env) {
+  if (warned || e.BASE_URL.startsWith('https://')) return;
+  warned = true;
+  const local = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(e.BASE_URL);
+  process.stderr.write(
+    '\n' +
+      `  BASE_URL is ${e.BASE_URL}, so sessions run over plain HTTP.\n` +
+      '  The session cookie cannot be marked Secure, and anyone on the network\n' +
+      '  path can read it. ' +
+      (local
+        ? 'Fine for evaluating on this machine.\n'
+        : 'NOT fine for real employee data.\n') +
+      '  Put a TLS-terminating proxy in front, set BASE_URL to its https URL,\n' +
+      '  and set TRUST_PROXY=true.\n\n',
+  );
 }
