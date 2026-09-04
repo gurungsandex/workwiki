@@ -49,19 +49,22 @@ works without one, and `/readyz` will report storage as the failing check.
 
 ### Running the database-backed tests
 
-30 of the 117 tests need Postgres and **skip silently** without
-`TEST_DATABASE_URL` — including every leak test and the access-engine
-agreement test. `npm test` still exits 0, so a run reporting **87 passed** is
-not a green access engine; it is an unverified one.
+Five suites need Postgres and **skip silently** without `TEST_DATABASE_URL` —
+including every leak test and the access-engine agreement test. `npm test`
+still exits 0, so a green summary proves nothing on its own.
 
 ```sh
 TEST_DATABASE_URL=postgres://localhost/workwiki_test npm test
 ```
 
-CI always sets it. In Claude Code on the web, `.claude/hooks/session-start.sh`
-starts Postgres, migrates a test database and exports the variable, so a fresh
-session gets all 117 without being asked. If you ever see 87, the database is
-missing — fix that before believing the result.
+The signal to read is `skipped` in the vitest summary, not a pass count: a
+count goes stale the next time anyone adds a test, `skipped` never does. **Any
+skipped test means the database is missing**, and the run is unverified rather
+than green.
+
+CI always sets the variable. In Claude Code on the web,
+`.claude/hooks/session-start.sh` starts Postgres, migrates a test database and
+exports it, so a fresh session runs everything without being asked.
 
 ## Upgrading
 

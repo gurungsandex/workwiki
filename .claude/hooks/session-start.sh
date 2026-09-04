@@ -4,20 +4,29 @@
 #
 # WHY THIS EXISTS
 #
-# 30 of this repo's 117 tests are database-backed and SKIP SILENTLY when
+# Several of this repo's suites are database-backed and SKIP SILENTLY when
 # TEST_DATABASE_URL is unset — and they are the ones that matter most:
 #
-#   tests/security/leak.test.ts        15  a canary in a gated body must not
-#                                          reach any tree, page or search result
-#   tests/access/sql-truth-table.test  9   the SQL predicate against the spec
-#   tests/security/rate-limit.test     5   login throttling semantics
-#   tests/access/agreement.test        1   500 rule trees through both the pure
-#                                          evaluator and its SQL twin
+#   tests/security/leak.test.ts        a canary in a gated body must not reach
+#                                      any tree, page or search result
+#   tests/access/sql-truth-table.test  the SQL predicate against the spec
+#   tests/access/agreement.test        random rule trees through both the pure
+#                                      evaluator and its SQL twin
+#   tests/security/rate-limit.test     login throttling semantics
+#   tests/dimensions/manage.test.ts    dimensions are rows, and archiving one
+#                                      that is still in use is refused
 #
-# Without this hook a session runs `npm test`, sees "87 passed", and reasonably
-# concludes the access engine is verified when the leak tests never executed.
-# That is the exact failure this codebase is built to prevent, reintroduced
-# through the test harness. So: start Postgres, migrate it, export the URL.
+# Without this hook a session runs `npm test`, sees a green summary, and
+# reasonably concludes the access engine is verified when the leak tests never
+# executed. That is the exact failure this codebase is built to prevent,
+# reintroduced through the test harness. So: start Postgres, migrate it, export
+# the URL.
+#
+# Deliberately no test count anywhere below: a hardcoded number goes stale the
+# next time anyone adds a test, and a stale number is worse than none — it
+# invites a future session to accept a skipped run. The durable signal is that
+# vitest prints `skipped` in its summary. Zero skipped, or the database is
+# missing.
 #
 # The container ships Postgres 16 binaries but no running server, no Docker
 # daemon and no MinIO. MinIO is not started here; without it /readyz correctly
@@ -52,7 +61,8 @@ npm install --no-audit --no-fund --loglevel=error
 # ------------------------------------------------------------------- postgres
 if [ -z "$PG_BIN" ]; then
   say "WARNING: no Postgres binaries found. Database-backed tests will SKIP."
-  say "         Run them elsewhere, or treat a 87/117 pass as unverified."
+  say "         Run them elsewhere; a summary reporting skipped tests here"
+  say "         is not a green access engine, it is an unverified one."
   exit 0
 fi
 export PATH="$PG_BIN:$PATH"
@@ -85,7 +95,8 @@ fi
 
 if ! pg_isready -h 127.0.0.1 -p "$PGPORT" -q 2>/dev/null; then
   say "WARNING: Postgres did not come up. See /tmp/workwiki-pg.log"
-  say "         Database-backed tests will SKIP, so 87/117 means unverified."
+  say "         Database-backed tests will SKIP, and a run with skipped"
+  say "         tests in its summary means unverified, not verified."
   exit 0
 fi
 
@@ -122,6 +133,7 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   } >> "$CLAUDE_ENV_FILE"
 fi
 
-say "Ready. TEST_DATABASE_URL is set — 'npm test' should report 117 passed."
-say "A run reporting 87 means the database-backed suites skipped; do not"
-say "treat that as a green access engine."
+say "Ready. TEST_DATABASE_URL is set, so every suite should run."
+say "Check the vitest summary for 'skipped': any skipped test means the"
+say "database-backed suites did not run. Do not treat that as a green"
+say "access engine."
