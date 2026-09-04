@@ -17,7 +17,7 @@ jobs:
           POSTGRES_PASSWORD: workwiki
           POSTGRES_DB: workwiki_test
         options: >-
-          --health-cmd "pg_isready -U workwiki"
+          --health-cmd "pg_isready -U workwiki -d workwiki_test"
           --health-interval 5s --health-timeout 5s --health-retries 20
         ports: ['5432:5432']
 
@@ -51,6 +51,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
 
       - name: Migrations against a real Postgres
         run: npm run migrate

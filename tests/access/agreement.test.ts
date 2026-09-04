@@ -103,8 +103,9 @@ run('SQL predicate agrees with the pure evaluator', () => {
     await sql?.end({ timeout: 5 });
   });
 
-  it('agrees on 300 generated rule trees', async () => {
-    const CASES = 500;
+  const CASES = 500;
+
+  it(`agrees on ${CASES} generated rule trees`, async () => {
     const disagreements: string[] = [];
 
     for (let i = 0; i < CASES; i++) {

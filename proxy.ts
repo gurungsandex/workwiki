@@ -3,6 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 /**
  * Per-request security headers.
  *
+ * Next 16 renamed the `middleware` file convention to `proxy`; the exported
+ * function is `proxy`. The behaviour is unchanged.
+ *
  * CSP carries a nonce, so it lives here rather than in next.config.ts. There
  * are no inline event handlers anywhere in this app and no eval, so the policy
  * needs neither 'unsafe-inline' nor 'unsafe-eval' in production.
@@ -14,7 +17,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // --- CSRF: same-origin check on every mutating request ------------------
   if (!SAFE_METHODS.has(request.method)) {
     const origin = request.headers.get('origin');
