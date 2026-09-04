@@ -47,13 +47,21 @@ works without one, and `/readyz` will report storage as the failing check.
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run worker` | Background worker (pg-boss) |
 
-Tests that need Postgres skip silently without `TEST_DATABASE_URL`, so
-`npm test` is useful either way — but CI sets it, and the access-engine
-agreement test and the leak tests only run when it is set.
+### Running the database-backed tests
+
+30 of the 117 tests need Postgres and **skip silently** without
+`TEST_DATABASE_URL` — including every leak test and the access-engine
+agreement test. `npm test` still exits 0, so a run reporting **87 passed** is
+not a green access engine; it is an unverified one.
 
 ```sh
 TEST_DATABASE_URL=postgres://localhost/workwiki_test npm test
 ```
+
+CI always sets it. In Claude Code on the web, `.claude/hooks/session-start.sh`
+starts Postgres, migrates a test database and exports the variable, so a fresh
+session gets all 117 without being asked. If you ever see 87, the database is
+missing — fix that before believing the result.
 
 ## Upgrading
 
