@@ -10,6 +10,26 @@ import { join, extname } from 'node:path';
 
 type Finding = { rule: string; file: string; line: number; text: string };
 
+/**
+ * Files permitted to read access_rule without deciding access.
+ *
+ * Each one COUNTS or LISTS rules for an admin surface; none of them evaluates a
+ * rule against a subject. Employee-facing read paths (lib/content, lib/search,
+ * app/api/*) are deliberately absent and must go through evaluate().
+ */
+const ACCESS_RULE_READERS = [
+  // Renders every rule as an English sentence for the "Who sees what" tab.
+  'app/(admin)/admin/rules/page.tsx',
+  // Counts published pages with no rule anywhere in their ancestry.
+  'app/(admin)/admin/health/page.tsx',
+  // Shows how many rules name each dimension.
+  'app/(admin)/admin/structure/page.tsx',
+  // Counts rules for the derived setup checklist.
+  'lib/setup/checklist.ts',
+  // Counts rules that name a dimension, to refuse an unsafe archive.
+  'lib/dimensions/manage.ts',
+];
+
 const ROOTS = ['app', 'lib', 'components', 'worker', 'scripts'];
 const CODE = new Set(['.ts', '.tsx']);
 
@@ -52,14 +72,13 @@ const RULES: {
     test: /FROM\s+access_rule\b/i,
     why:
       'Only lib/access/ may read access_rule to DECIDE access; call evaluate(). ' +
-      'Admin screens that merely list or count rules are exempt and named below.',
-    // Admin surfaces display rules; they do not evaluate them. Employee-facing
-    // read paths (lib/content, lib/search, app/api) are NOT exempt.
+      'Counting or listing rules for an admin screen is exempt, but each such ' +
+      'file is named explicitly in ACCESS_RULE_READERS so adding one is a ' +
+      'deliberate act rather than a directory-wide hole.',
     appliesTo: (p) =>
       !p.startsWith('lib/access/') &&
       !p.includes('check-invariants') &&
-      !p.includes('app/(admin)/') &&
-      !p.includes('lib/setup/checklist.ts'),
+      !ACCESS_RULE_READERS.some((allowed) => p.includes(allowed)),
   },
 ];
 

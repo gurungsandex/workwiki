@@ -173,3 +173,29 @@ checks; the prototype shows four fixed roles × eight capabilities. `admin_scope
 is modelled as capability rows with an optional department scope, which can
 express the four roles as presets. Only the coarse `is_admin` check is enforced
 in this milestone; delegated sub-admin scopes are M6.
+
+---
+
+## 11. Removing a dimension is refused while anything depends on it
+
+**The tension.** The admin prototype removes an employee type by dropping its
+id from every rule that names it, and its own save-state copy calls that
+*"N rules widened to every type"*.
+
+**Decision.** `archiveDimension` refuses while any live person is recorded in
+the row, any role still sits under a department, or any live rule names it. It
+never edits a rule. Each refusal names what is in the way and what removing it
+would otherwise have changed.
+
+**Why.** Widening access as the side effect of a delete is the leak this
+codebase exists to prevent: an admin tidying up a stale employee type would
+silently grant every rule that mentioned it to everybody. An admin who *wants*
+those rules widened can widen them deliberately, in the rules screen, where the
+change is visible and audited as a rule edit.
+
+Renaming has the opposite property and is free: rules store ids, not names, so
+a rename cannot change who sees what. The save-state line says "rules followed"
+because they did.
+
+**Departs from the prototype's behaviour and one of its copy strings.** The
+refusal messages are new text written in the same voice.
