@@ -69,7 +69,7 @@ export async function checklist(sql: Sql): Promise<ChecklistItem[]> {
     {
       key: 'contacts',
       title: 'Name at least one person to ask',
-      note: 'Every page resolves a contact. Without one, an employee who finds nothing has nowhere to go.',
+      note: 'Every page resolves a contact, and a surface with nobody named is hidden rather than shown empty. Mark one as the fallback on the Who to ask tab.',
       state: state(n(counts?.contacts) > 0, false),
       detail: n(counts?.contacts) === 0 ? 'Nobody named yet' : `${n(counts?.contacts)} contact cards`,
     },
@@ -83,14 +83,14 @@ export async function checklist(sql: Sql): Promise<ChecklistItem[]> {
     {
       key: 'rules',
       title: 'Say who sees what',
-      note: 'Nothing is public by default. A page with no rule anywhere in its ancestry reaches nobody.',
+      note: 'Nothing is public by default. A page with no allow rule anywhere in its ancestry reaches nobody, however finished it looks.',
       state: state(n(counts?.rules) > 0, false),
       detail: n(counts?.rules) === 0 ? 'No rules yet' : `${n(counts?.rules)} rules`,
     },
     {
       key: 'people',
       title: 'Invite employees',
-      note: 'Each person sees only the version of the handbook their own record produces.',
+      note: 'Each person sees only the version their own record produces. Adding somebody does not let them in — they redeem an invite link and set their own password.',
       state: state(n(counts?.people) > 1, n(counts?.people) > 0),
       detail: `${n(counts?.people)} people`,
     },

@@ -234,6 +234,32 @@ run('a gated body never reaches an employee', () => {
     });
   });
 
+  describe('a page cannot outlive its ancestry', () => {
+    beforeEach(async () => {
+      await addPageRule('allow', {});
+    });
+
+    it('is unreachable when its section is unpublished', async () => {
+      await sql`UPDATE content_node SET state = 'draft' WHERE id = ${SEC}::uuid`;
+      const r = await readPage(sql, subject(), 'retirement-enrolment', AT);
+      expect(r.kind).toBe('not-found');
+      noSecret(r);
+      expect(await readTree(sql, subject(), AT)).toHaveLength(0);
+    });
+
+    it('is unreachable when its topic is unpublished', async () => {
+      await sql`UPDATE content_node SET state = 'draft' WHERE id = ${TOP}::uuid`;
+      expect((await readPage(sql, subject(), 'retirement-enrolment', AT)).kind)
+        .toBe('not-found');
+      noSecret(await readTree(sql, subject(), AT));
+    });
+
+    it('is reachable when the whole chain is published', async () => {
+      const r = await readPage(sql, subject(), 'retirement-enrolment', AT);
+      expect(r.kind).toBe('full');
+    });
+  });
+
   describe('empty branches are hidden, never rendered empty', () => {
     it('a section whose only page is hidden disappears from the tree', async () => {
       await addPageRule('deny', {});

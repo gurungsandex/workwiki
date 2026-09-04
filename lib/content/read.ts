@@ -61,7 +61,22 @@ export async function readTree(
        AND a.visibility <> 'hidden'
      ORDER BY n.level, n.sort_key, n.title`;
 
-  const items: TreeItem[] = rows.map((r) => ({
+  // A page whose section or topic is not published is not reachable either.
+  // Publishing is per node, so an admin can unpublish a section and leave its
+  // pages published; without this they would arrive as orphans with no place in
+  // Browse. Everything must be published all the way up to be visible.
+  const publishedIds = new Set(rows.map((r) => r.id));
+  const reachable = rows.filter((r) => {
+    let parent = r.parent_id;
+    const byId = new Map(rows.map((x) => [x.id, x]));
+    while (parent !== null) {
+      if (!publishedIds.has(parent)) return false;
+      parent = byId.get(parent)?.parent_id ?? null;
+    }
+    return true;
+  });
+
+  const items: TreeItem[] = reachable.map((r) => ({
     id: r.id,
     level: r.level,
     parentId: r.parent_id,
@@ -134,8 +149,20 @@ export async function readPage(
      WHERE slug = ${slug} AND level = 'page' AND archived_at IS NULL`;
 
   // Unpublished is not routable: the same answer as a slug that never existed,
-  // so an employee cannot probe for draft titles.
+  // so an employee cannot probe for draft titles. The whole ancestry must be
+  // published too — an unpublished section takes its pages with it.
   if (!node || node.state !== 'published') return { kind: 'not-found' };
+
+  const unpublishedAncestor = await sql<{ n: string }[]>`
+    WITH RECURSIVE up AS (
+      SELECT id, parent_id, state, archived_at FROM content_node WHERE id = ${node.id}::uuid
+      UNION ALL
+      SELECT p.id, p.parent_id, p.state, p.archived_at
+        FROM content_node p JOIN up ON p.id = up.parent_id
+    )
+    SELECT count(*)::text AS n FROM up
+     WHERE state <> 'published' OR archived_at IS NOT NULL`;
+  if (Number(unpublishedAncestor[0]?.n ?? 0) > 0) return { kind: 'not-found' };
 
   const chain = await resolveChain(sql, node.id);
   const decision = evaluate(subject, chain, at);

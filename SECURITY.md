@@ -35,7 +35,8 @@ response, across tenure-locked, denied, unpublished and permitted states.
 | Surface | Posture |
 | --- | --- |
 | Passwords | Argon2id, parameters from config, recorded in the encoded hash. Login transparently rehashes when the configured cost is raised. Minimum length 12, no composition rules. |
-| Sessions | Opaque 256-bit tokens, stored as sha256, compared in constant time. `__Host-` prefixed cookie, `HttpOnly; Secure; SameSite=Lax`. Sliding 12-hour expiry with a 30-day absolute cap. |
+| Sessions | Opaque 256-bit tokens, stored as sha256, compared in constant time. `HttpOnly; SameSite=Lax`, sliding 12-hour expiry with a 30-day absolute cap. Over https the cookie is `__Host-` prefixed and `Secure`; over http it is neither, because a `Secure` cookie is simply never stored and login would fail silently. The scheme is read from `BASE_URL`, and an http deployment prints a boot warning naming what is exposed. **Run behind TLS.** |
+| Invites | Single-use, 14-day expiry, stored only as a sha256 hash — the link is shown to the admin exactly once and cannot be recovered. Issuing a new one revokes any earlier live invite. Expired, revoked, already-used and never-existed all return one identical message. Redemption is throttled and consumed inside a transaction, so two simultaneous redemptions cannot both succeed. |
 | Revocation | A delete. Sign-out-everywhere is one statement. Deactivating a user takes effect on their **next request**, because the session lookup joins on `status`. |
 | Enumeration | Login returns one message for an unknown address and a wrong password, and runs a dummy Argon2id verify when the user does not exist so the timing matches. |
 | Brute force | Per-identity and per-IP counters in Postgres. Progressive delay from the soft limit (5 for login), hard refusal at 10 in a 15-minute window. Semantics pinned by `tests/security/rate-limit.test.ts`. |
@@ -103,10 +104,13 @@ one violation of each class.
 
 ## What the operator must still do
 
-1. **Run behind a TLS-terminating reverse proxy and set `TRUST_PROXY=true`.**
-   With it off there is no client IP, so only the per-identity rate limit
-   applies and an attacker who varies the email address is limited only by
-   that. This is the single most important deployment step.
+1. **Run behind a TLS-terminating reverse proxy, set `BASE_URL` to its https
+   URL, and set `TRUST_PROXY=true`.** This is the single most important
+   deployment step, and it now does two things. Without https the session
+   cookie cannot be `Secure`, so the token crosses the wire in the clear (the
+   server warns about this at boot). Without `TRUST_PROXY` there is no client
+   IP, so only the per-identity rate limit applies and an attacker who varies
+   the email address is limited only by that.
 2. **Set `SESSION_SECRET` and `ENCRYPTION_KEY` to 32 random bytes each**
    (`openssl rand -hex 32`). The server refuses to start without them.
 3. **Change the MinIO credentials.** The compose file ships
@@ -129,8 +133,9 @@ These are known gaps, not oversights:
   `pending`) is M7.
 - Delegated sub-admin scopes: `admin_scope` exists, but only the coarse
   `is_admin` check is enforced. M6.
-- Email verification and password reset flows have tables and token handling but
-  no routes yet.
+- Password reset has tables and token handling but no route yet. Email
+  verification is implicit: redeeming an invite proves control of the address
+  the admin entered, and stamps `email_verified_at`.
 - The AI assistant is off, ships with no credentials, and has no code path.
   pgvector is deliberately not installed until it is enabled.
 

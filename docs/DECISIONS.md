@@ -199,3 +199,54 @@ because they did.
 
 **Departs from the prototype's behaviour and one of its copy strings.** The
 refusal messages are new text written in the same voice.
+
+---
+
+## 12. The content editor, designed here
+
+`CLAUDE.md` lists the admin content editor as *"not designed — ask before
+building"*. It was asked about across several turns and then explicitly
+requested as part of making the product shippable, so it is built — and the
+design decisions are recorded here rather than left implicit.
+
+It is assembled from Broadsheet's existing parts, adding no new visual
+vocabulary:
+
+- **The structure is list rows**, with the single 1px separator, indented by
+  depth. Not a card, not a drag handle, not a tree widget.
+- **Blocks are typed forms** beneath the selected page, one per kind. Only the
+  rich-text kind is prose; everything else is fields, which is what keeps
+  content queryable rather than a blob of HTML.
+- **State is stated in words**, not a badge: "Draft, nobody sees it", "no rule
+  reaches it", "Draft — not published". The screen tells an author what is
+  true rather than colour-coding it.
+- **The publish button explains what it will refuse.** A guide with nowhere to
+  hand off and a summary still in draft both stop a publish, and the message
+  says which.
+
+Two things were deliberately NOT built, because they are separate undesigned
+surfaces rather than parts of this one: live employee preview beside the editor,
+and preview-as with time travel. The reach count on the rules screen covers most
+of what preview-as was for — it reports how many people a node actually reaches,
+computed by running the real evaluator over the real roster.
+
+Ordering uses a fractional index (`lib/content/manage.ts`), so a move is a
+single-row UPDATE. The scheme's one precondition — that the floor digit is never
+itself a key — is asserted in `tests/content/sort-key.test.ts`.
+
+---
+
+## 13. A page cannot outlive its ancestry
+
+Publishing is per node, so an admin can publish a page and leave its section a
+draft. The first end-to-end walkthrough surfaced what that produced: pages
+arriving in the employee's tree as orphans, with no section to sit under and no
+place in Browse.
+
+**Decision.** A node is visible only if every ancestor is also published and
+unarchived. `readTree` filters to the reachable set and `readPage` walks the
+ancestry before releasing anything.
+
+**Why.** It matches what unpublishing a section obviously means, and it removes
+a state where content is reachable by URL but absent from navigation. Covered by
+three regression tests in `tests/security/leak.test.ts`.

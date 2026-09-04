@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 const TABS = [
   { href: '/admin', label: 'Setup' },
   { href: '/admin/structure', label: 'Departments and roles' },
+  { href: '/admin/people', label: 'People' },
   { href: '/admin/content', label: 'Sections' },
   { href: '/admin/contacts', label: 'Who to ask' },
   { href: '/admin/rules', label: 'Who sees what' },

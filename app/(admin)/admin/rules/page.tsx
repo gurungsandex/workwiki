@@ -1,6 +1,6 @@
 import { sql } from '@/lib/db/client';
-import { ruleSentence } from '@/lib/access/sentence';
 import { parseConditions } from '@/lib/access/conditions';
+import { RuleBuilder, type ExistingRule, type NodeOption, type Option } from './RuleBuilder';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Who sees what' };
@@ -15,61 +15,56 @@ export const metadata = { title: 'Who sees what' };
 export default async function Rules() {
   const db = sql();
 
-  const [rules, labels] = await Promise.all([
-    db<
-      {
-        id: string;
-        effect: 'allow' | 'deny';
-        conditions: unknown;
-        visibility_when_locked: string;
-        node_title: string | null;
-        node_level: string | null;
-      }[]
-    >`
-      SELECT r.id, r.effect, r.conditions, r.visibility_when_locked,
-             n.title AS node_title, n.level AS node_level
+  const [rawRules, nodes, departments, roles, types, locations] = await Promise.all([
+    db<{ id: string; targetId: string; targetTitle: string; effect: 'allow' | 'deny'; conditions: unknown; visibilityWhenLocked: string }[]>`
+      SELECT r.id, r.target_id AS "targetId", n.title AS "targetTitle", r.effect,
+             r.conditions, r.visibility_when_locked AS "visibilityWhenLocked"
         FROM access_rule r
-        LEFT JOIN content_node n ON n.id = r.target_id AND r.target_type = 'node'
-       WHERE r.archived_at IS NULL
-       ORDER BY n.title NULLS LAST, r.effect`,
-    loadLabels(db),
+        JOIN content_node n ON n.id = r.target_id
+       WHERE r.archived_at IS NULL AND n.archived_at IS NULL
+       ORDER BY n.depth, n.sort_key, r.effect`,
+    db<NodeOption[]>`
+      SELECT id, title, level, depth FROM content_node
+       WHERE archived_at IS NULL ORDER BY depth, sort_key, title`,
+    db<Option[]>`SELECT id, name FROM department WHERE archived_at IS NULL ORDER BY name`,
+    db<Option[]>`SELECT id, name FROM role WHERE archived_at IS NULL ORDER BY name`,
+    db<Option[]>`SELECT id, name FROM employee_type WHERE archived_at IS NULL ORDER BY name`,
+    db<Option[]>`SELECT id, name FROM location WHERE archived_at IS NULL ORDER BY name`,
   ]);
+
+  const rules: ExistingRule[] = rawRules.map((r) => ({
+    id: r.id,
+    targetId: r.targetId,
+    targetTitle: r.targetTitle,
+    effect: r.effect,
+    conditions: safeConditions(r.conditions),
+    visibilityWhenLocked: r.visibilityWhenLocked,
+  }));
 
   return (
     <>
       <p className="eyebrow" style={{ marginBottom: 8 }}>Who sees what</p>
-      <h1 style={{ fontSize: 34, marginBottom: 10 }}>Rules, as sentences</h1>
-      <p className="lead" style={{ marginBottom: 30 }}>
-        One evaluation engine decides every section, page and file, and it explains
-        itself. No JSON, no expression language: a rule reads back in plain English.
+      <h1 style={{ fontSize: 34, marginBottom: 10 }}>Build a rule as a sentence</h1>
+      <p className="lead" style={{ marginBottom: 14 }}>
+        No JSON, no expression language. Pick the dimensions; the rule reads back in
+        plain English, with a live count of who it reaches — worked out by the same
+        evaluator that decides what employees actually see.
+      </p>
+      <p className="note" style={{ marginBottom: 30, fontStyle: 'italic' }}>
+        Nothing is public by default. A page with no allow rule anywhere in its
+        ancestry is read by nobody, however finished it looks.
       </p>
 
-      {rules.length === 0 ? (
-        <p className="lead" style={{ marginBottom: 40 }}>
-          No rules yet — which means nothing reaches anybody. Nothing is public by
-          default, so a page with no rule anywhere in its ancestry is read by nobody.
-        </p>
-      ) : (
-        <div className="rows" style={{ marginBottom: 40 }}>
-          {rules.map((r) => (
-            <div key={r.id}>
-              <p className="eyebrow" style={{ marginBottom: 3 }}>
-                {r.node_title ?? 'Unattached'}
-                {r.node_level ? ` · ${r.node_level}` : ''}
-              </p>
-              <p style={{ margin: '0 0 3px', fontSize: 17, maxWidth: '56ch' }}>
-                {ruleSentence(safeConditions(r.conditions), labels, r.effect)}
-              </p>
-              <p style={{ margin: 0, fontSize: 12.5, color: 'var(--color-neutral-600)' }}>
-                While locked, show{' '}
-                {r.visibility_when_locked === 'hidden'
-                  ? 'nothing at all'
-                  : 'the title, the unlock date and one line'}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+      <RuleBuilder
+        nodes={nodes}
+        departments={departments}
+        roles={roles}
+        types={types}
+        locations={locations}
+        rules={rules}
+      />
+
+      <div style={{ height: 44 }} />
 
       <section>
         <h2 style={{ fontSize: 24, marginBottom: 18 }}>How it resolves, and why</h2>
@@ -133,26 +128,4 @@ function safeConditions(raw: unknown) {
   } catch {
     return {};
   }
-}
-
-async function loadLabels(db: ReturnType<typeof sql>) {
-  const [departments, roles, types, locations, groups] = await Promise.all([
-    db<{ id: string; name: string }[]>`SELECT id, name FROM department WHERE archived_at IS NULL`,
-    db<{ id: string; name: string }[]>`SELECT id, name FROM role WHERE archived_at IS NULL`,
-    db<{ id: string; name: string }[]>`SELECT id, name FROM employee_type WHERE archived_at IS NULL`,
-    db<{ id: string; name: string }[]>`SELECT id, name FROM location WHERE archived_at IS NULL`,
-    db<{ slug: string; name: string }[]>`SELECT slug, name FROM employee_group WHERE archived_at IS NULL`,
-  ]);
-  const map = (rows: { id: string; name: string }[]) =>
-    new Map(rows.map((r) => [r.id, r.name]));
-  const d = map(departments), r = map(roles), t = map(types), l = map(locations);
-  const g = new Map(groups.map((x) => [x.slug, x.name]));
-  const look = (m: Map<string, string>) => (id: string) => m.get(id) ?? 'a group that no longer exists';
-  return {
-    department: look(d),
-    role: look(r),
-    employeeType: look(t),
-    location: look(l),
-    group: look(g),
-  };
 }
