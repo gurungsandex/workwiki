@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Build and cache
+dist/
+build/
+*.tsbuildinfo
+.eslintcache
+.vitest/
+
+# Environment — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Local data
+/data/
+/minio-data/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

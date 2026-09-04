@@ -1,0 +1,49 @@
+{
+  "name": "workwiki",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate": "tsx lib/db/migrate.ts",
+    "seed": "tsx scripts/seed.ts",
+    "worker": "tsx worker/index.ts",
+    "check:invariants": "tsx scripts/check-invariants.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1126.0",
+    "@aws-sdk/s3-request-presigner": "^3.1126.0",
+    "@node-rs/argon2": "2.0.2",
+    "@tiptap/core": "^3.31.3",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "drizzle-orm": "^0.45.2",
+    "file-type": "^22.0.2",
+    "next": "^16.3.4",
+    "nodemailer": "^10.0.0",
+    "pg-boss": "10.1.6",
+    "postgres": "3.4.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/nodemailer": "6.4.17",
+    "@types/react": "19.0.7",
+    "@types/react-dom": "19.0.3",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^10.9.1",
+    "eslint-config-next": "^16.3.4",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
