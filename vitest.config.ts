@@ -9,6 +9,7 @@ export default defineConfig({
     // Several suites drive one real Postgres and truncate between cases, so
     // files must not run concurrently against it.
     fileParallelism: false,
+    setupFiles: ['tests/setup-env.ts'],
     testTimeout: 30_000,
   },
   resolve: {

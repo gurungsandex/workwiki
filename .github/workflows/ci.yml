@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: workwiki
+          POSTGRES_PASSWORD: workwiki
+          POSTGRES_DB: workwiki_test
+        options: >-
+          --health-cmd "pg_isready -U workwiki"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports: ['5432:5432']
+
+    env:
+      TEST_DATABASE_URL: postgres://workwiki:workwiki@localhost:5432/workwiki_test
+      DATABASE_URL: postgres://workwiki:workwiki@localhost:5432/workwiki_test
+      BASE_URL: http://localhost:3000
+      SESSION_SECRET: '0000000000000000000000000000000000000000000000000000000000000000'
+      ENCRYPTION_KEY: '1111111111111111111111111111111111111111111111111111111111111111'
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: workwiki
+      S3_ACCESS_KEY_ID: test
+      S3_SECRET_ACCESS_KEY: test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The invariants from CLAUDE.md, enforced mechanically rather than by
+      # prose: no derived columns, no hard deletes of content, no audit
+      # mutation, no motion, no sans-serif, no company vocabulary in code, and
+      # access_rule read only where access is decided.
+      - name: Invariants
+        run: npm run check:invariants
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Migrations against a real Postgres
+        run: npm run migrate
+
+      # Includes the access-engine truth table, the SQL-vs-function agreement
+      # property test, and the leak tests.
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Migrations must be forward-only and must apply to an ALREADY-migrated
+      # database without error, which is what an upgrade does.
+      - name: Migrations are idempotent
+        run: npm run migrate
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Production dependencies must carry no known vulnerability. Dev-only
+      # advisories are reported but do not fail the build, because they are not
+      # in the shipped image.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=low
+      - name: Audit everything (informational)
+        run: npm audit || true

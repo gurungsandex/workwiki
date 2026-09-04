@@ -1,5 +1,4 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { env } from '@/lib/env';
 
 /**
  * Opaque tokens. 256 bits of randomness, stored hashed, compared in constant
@@ -21,10 +20,20 @@ export function tokensEqual(a: Buffer, b: Buffer): boolean {
 /**
  * A keyed hash for values we must be able to correlate but never read back:
  * client IPs in the audit log and the rate limiter.
+ *
+ * Reads SESSION_SECRET directly rather than through the validated env object.
+ * This runs on paths that must not be able to take the process down — a
+ * throttled login is exactly when you least want a boot-time validator to fire
+ * — and it needs one variable, not the whole environment.
  */
 export function pseudonymise(value: string): Buffer {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    // Fail closed and loudly at the call site, not by exiting the process.
+    throw new Error('SESSION_SECRET is missing or too short; cannot pseudonymise.');
+  }
   return createHash('sha256')
-    .update(env().SESSION_SECRET, 'utf8')
+    .update(secret, 'utf8')
     .update('\x00')
     .update(value, 'utf8')
     .digest();

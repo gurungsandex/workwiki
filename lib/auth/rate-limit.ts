@@ -5,23 +5,35 @@ import { pseudonymise } from './tokens';
  * Per-account AND per-IP limits with progressive delay on login, reset and
  * invite redemption (spec §11). Backed by the same Postgres everything else
  * uses, so there is no fourth service to run.
+ *
+ * IMPORTANT DEPLOYMENT NOTE: the per-IP half only works when TRUST_PROXY is on
+ * AND a proxy you control sets X-Forwarded-For. With TRUST_PROXY off there is
+ * no client IP to bucket on, so only the per-identity limit applies and an
+ * attacker who varies the email address is limited only by that. Run this
+ * behind a reverse proxy in production and set TRUST_PROXY=true — SECURITY.md
+ * says so too.
  */
 
 export type Purpose = 'login' | 'reset' | 'invite';
 
 const WINDOW_MINUTES = 15;
-const LIMITS: Record<Purpose, { perIdentity: number; perIp: number }> = {
-  login: { perIdentity: 8, perIp: 40 },
-  reset: { perIdentity: 4, perIp: 20 },
-  invite: { perIdentity: 6, perIp: 30 },
+
+/**
+ * `soft` is where the progressive delay starts; `hard` is where the request is
+ * refused outright for the rest of the window.
+ */
+const LIMITS: Record<Purpose, { softIdentity: number; hardIdentity: number; softIp: number; hardIp: number }> = {
+  login:  { softIdentity: 5, hardIdentity: 10, softIp: 20, hardIp: 60 },
+  reset:  { softIdentity: 3, hardIdentity: 6,  softIp: 10, hardIp: 30 },
+  invite: { softIdentity: 4, hardIdentity: 8,  softIp: 15, hardIp: 40 },
 };
 
 export type RateVerdict = { allowed: boolean; delayMs: number; retryAfterSec: number };
 
-/** Progressive delay: doubles per attempt over the limit, capped. */
-function progressiveDelay(attempts: number, limit: number): number {
-  if (attempts <= limit) return 0;
-  return Math.min(2 ** (attempts - limit) * 250, 8000);
+/** Progressive delay: doubles per attempt past the soft limit, capped. */
+function progressiveDelay(attempts: number, soft: number): number {
+  if (attempts <= soft) return 0;
+  return Math.min(2 ** (attempts - soft) * 250, 8000);
 }
 
 export async function checkRateLimit(
@@ -50,10 +62,11 @@ export async function checkRateLimit(
   let blocked = false;
   for (const row of rows) {
     const isIp = row.bucket.startsWith('ip:');
-    const limit = isIp ? limits.perIp : limits.perIdentity;
+    const soft = isIp ? limits.softIp : limits.softIdentity;
+    const hard = isIp ? limits.hardIp : limits.hardIdentity;
     const n = Number(row.n);
-    if (n >= limit * 3) blocked = true;
-    worstDelay = Math.max(worstDelay, progressiveDelay(n, limit));
+    if (n >= hard) blocked = true;
+    worstDelay = Math.max(worstDelay, progressiveDelay(n, soft));
   }
 
   return {
