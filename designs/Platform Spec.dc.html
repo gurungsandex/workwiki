@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/broadsheet-2d7b5a60-91fc-425f-af96-3a27567b7e97/styles.css">
+<script src="_ds/broadsheet-2d7b5a60-91fc-425f-af96-3a27567b7e97/_ds_bundle.js"></script>
+<script src="./doc-page.js"></script>
+<style>
+  doc-page:not(:defined) { visibility: hidden; }
+  h1, h2, h3, h4 { text-wrap: balance; }
+  p, li { text-wrap: pretty; }
+  pre.mermaid { break-inside: avoid; text-align: left; }
+  pre.mermaid svg { max-width: 100%; height: auto; }
+</style>
+</helmet>
+<doc-page margin="0.8in">
+
+<div slot="footer" style="display:flex; justify-content:space-between; font-family:var(--font-body); font-size:9pt; color:var(--color-neutral-600); padding-top:6pt;">
+  <span>Employee Information &amp; Guidance Platform — Phase 1 Design Specification</span>
+  <span>Draft 1 · for review</span>
+</div>
+
+<h1 style="font-size:34pt; line-height:1.08; margin:0 0 0.15em; letter-spacing:-0.01em;">A self-hosted employee information and guidance platform</h1>
+<p style="font-size:13pt; line-height:1.5; color:var(--color-neutral-700); max-width:34em; margin:0 0 1.4em;">Phase 1 design specification. One deployment, one company, one database. The application ships with structure and no content: every department, policy, benefit, contact and rule is admin-created after first boot. It explains and directs; it processes nothing.</p>
+
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin:0 0 2.2em;">
+  <span class="tag tag-accent">Single-tenant</span>
+  <span class="tag tag-outline">Informational only</span>
+  <span class="tag tag-outline">Local email + password auth</span>
+  <span class="tag tag-outline">Template, not a company</span>
+  <span class="tag tag-accent-2">Assistant off by default</span>
+</div>
+
+<h2 style="font-size:11pt; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600); font-weight:600; margin:0 0 0.6em;">Contents</h2>
+<ol style="columns:2; column-gap:2.4em; font-size:11.5pt; line-height:1.85; margin:0 0 2.6em; padding-left:1.4em;">
+  <li>Architecture and stack</li>
+  <li>Data model</li>
+  <li>Access control</li>
+  <li>Import and extraction pipeline</li>
+  <li>Deployment and lifecycle</li>
+  <li>User journeys</li>
+  <li>Screen inventory</li>
+  <li>UI/UX direction</li>
+  <li>API surface</li>
+  <li>Optional AI assistant</li>
+  <li>Security and privacy</li>
+  <li>Build sequence</li>
+  <li>Open questions and risks</li>
+</ol>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">1. Architecture and stack</h2>
+<p style="max-width:34em; color:var(--color-neutral-700); margin:0 0 1.4em;">One process, one database, one object store. Everything a small company needs to evaluate the product runs from a single <code>docker compose up</code>. The bias throughout is toward fewer moving parts than toward best-in-class components, because every extra service is a self-host that fails on the first attempt.</p>
+
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Shape</h3>
+<p style="max-width:34em; margin:0 0 1em;">A single server-rendered application. Employee reads are access-filtered on the server, so no client ever receives content it is not entitled to and then hides it. Admin authoring is a client-heavy island inside the same app, talking to the same route handlers the public API exposes.</p>
+<pre class="mermaid">flowchart LR
+  B["Browser: employee or admin"] --> A["App server<br/>SSR plus route handlers"]
+  A --> P[("Postgres<br/>content, rules, sessions,<br/>tsvector, pgvector")]
+  A --> S[("Object store<br/>S3-compatible")]
+  A --> Q["Worker<br/>pg-boss jobs"]
+  Q --> P
+  Q --> S
+  Q --> O["OCR and extraction"]
+  A -.-> M["Model provider<br/>optional, hosted or local"]
+  A --> E["SMTP"]
+</pre>
+
+<h3 style="font-size:13pt; margin:1.8em 0 0.5em;">Choices</h3>
+<table class="table" style="font-size:10.5pt; width:100%;">
+  <thead><tr><th style="width:20%;">Concern</th><th style="width:24%;">Choice</th><th>Why, and what was rejected</th></tr></thead>
+  <tbody>
+    <tr><td>Framework</td><td>Next.js (App Router) + TypeScript</td><td>Server components let access filtering happen before render; one artefact to deploy. Rejected: SPA + separate API — two deploys, and filtering duplicated client-side.</td></tr>
+    <tr><td>Database</td><td>PostgreSQL 16</td><td>Full-text search, trigram fuzzy match, vectors and a job queue all live in the one database an admin already has to back up. Rejected: MySQL (weaker FTS), SQLite (concurrent authoring, no pgvector).</td></tr>
+    <tr><td>ORM / migrations</td><td>Drizzle + drizzle-kit</td><td>SQL-shaped, forward-only migration files that are readable in a code review and run with one command. Rejected: Prisma — heavier engine binary and shadow-database requirement complicate self-host upgrades.</td></tr>
+    <tr><td>Auth</td><td>Argon2id + opaque server-side sessions</td><td>Sessions are rows, so "sign out everywhere" and the admin session list are trivial queries. A thin <code>AuthProvider</code> interface fronts it so SSO can be added later. Rejected: NextAuth/Auth.js — architected around external identity providers we are explicitly not using; JWT sessions cannot be revoked.</td></tr>
+    <tr><td>File storage</td><td>S3 API; MinIO in Compose</td><td>Same code path locally and on any managed object store. Files are never public: every fetch proxies through an access-checked route that issues a short-lived signed URL. Rejected: local disk only — breaks horizontal scaling and backup ergonomics.</td></tr>
+    <tr><td>Jobs</td><td>pg-boss</td><td>Postgres-backed queue for extraction, OCR, link checks, embeddings and unlock notifications. Rejected: Redis + BullMQ — a fourth service for a workload measured in dozens of jobs a day.</td></tr>
+    <tr><td>Search</td><td><code>tsvector</code> + <code>pg_trgm</code></td><td>Typo tolerance from trigram similarity, ranking from <code>ts_rank_cd</code>, and — critically — the access filter is a join in the same query rather than a second system to keep in sync. Rejected: Meilisearch/Elastic — an extra service plus a permissions mirror, which is exactly where leaks come from.</td></tr>
+    <tr><td>Vectors</td><td>pgvector (only if assistant enabled)</td><td>No index is built until an admin turns the assistant on. Rejected: dedicated vector DB.</td></tr>
+    <tr><td>DOCX / PDF extraction</td><td>mammoth; pdfjs-dist</td><td>Mammoth preserves heading levels, lists, tables and images — the structure the mapping step depends on. pdfjs gives positioned text runs from which tables can be reconstructed.</td></tr>
+    <tr><td>OCR</td><td>Tesseract in the worker image</td><td>Per-word confidence scores, which the review queue sorts on. Rejected: a hosted OCR API — sends the handbook off-premises, unacceptable for regulated adopters.</td></tr>
+    <tr><td>Rich text</td><td>TipTap, constrained schema</td><td>Only the rich-text block type is a document editor; every other block is a typed form. Keeps content queryable instead of a blob of HTML.</td></tr>
+    <tr><td>Email</td><td>Nodemailer over SMTP</td><td>Every company already has an SMTP relay. Rejected: transactional-email SDKs — an account signup before first use.</td></tr>
+  </tbody>
+</table>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">2. Data model</h2>
+<p style="max-width:34em; color:var(--color-neutral-700); margin:0 0 1.2em;">The schema is content-agnostic by three devices, and by nothing else:</p>
+<ol style="max-width:34em; margin:0 0 1.4em; line-height:1.7;">
+  <li><strong>Dimensions are rows, not enums.</strong> Department, role, employee type and location are tables an admin populates. No <code>CHECK</code> constraint, no TypeScript union, no migration ever names a real one. The single exception is <code>employee_type.kind</code>, a soft hint (<code>salaried | hourly | contingent | other</code>) used only to pick sensible defaults in the rule builder.</li>
+    <li><strong>Sections are data.</strong> There is one <code>section</code> table. A "built-in" section is a row inserted by the scaffold seeder, distinguishable from a custom one only by <code>origin = 'scaffold'</code>, which no query branches on. There are no section subtypes and no code path may test a slug.</li>
+  <li><strong>Specialised content is a block kind, not a table hierarchy.</strong> <code>block.kind</code> selects a validator and a renderer; the typed payload lives in <code>block.data</code> (JSONB, validated per kind). Adding the eligibility-checker block adds a validator and a component, not a migration.</li>
+</ol>
+
+<h3 style="font-size:13pt; margin:1.6em 0 0.6em;">Entity relationships</h3>
+<p style="font-size:10.5pt; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600); margin:0 0 0.4em;">a. People and access</p>
+<pre class="mermaid">erDiagram
+  direction TB
+  USER ||--o{ SESSION : has
+  USER ||--o| EMPLOYEE_PROFILE : has
+  USER ||--o{ ADMIN_SCOPE : granted
+  DEPARTMENT ||--o{ EMPLOYEE_PROFILE : employs
+  ROLE ||--o{ EMPLOYEE_PROFILE : titles
+  EMPLOYEE_TYPE ||--o{ EMPLOYEE_PROFILE : classifies
+  LOCATION ||--o{ EMPLOYEE_PROFILE : sites
+  EMPLOYEE_PROFILE ||--o{ TENURE_ANCHOR : dates
+  EMPLOYEE_PROFILE ||--o| ORG_NODE : occupies
+</pre>
+<p style="font-size:10.5pt; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600); margin:1.4em 0 0.4em;">b. Content, rules and attestation</p>
+<pre class="mermaid">erDiagram
+  direction TB
+  SECTION ||--o{ TOPIC : contains
+  TOPIC ||--o{ PAGE : contains
+  PAGE ||--o{ BLOCK : contains
+  PAGE ||--o{ PAGE_VERSION : versioned
+  PAGE ||--o{ ACCESS_RULE : gated_by
+  SECTION ||--o{ ACCESS_RULE : gated_by
+  TOPIC ||--o{ ACCESS_RULE : gated_by
+  PAGE_VERSION ||--o{ ACKNOWLEDGMENT : attested
+  USER ||--o{ ACKNOWLEDGMENT : signs
+  BLOCK ||--o| SNIPPET : reuses
+</pre>
+<p style="font-size:10.5pt; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600); margin:1.4em 0 0.4em;">c. Benefits, contacts, jurisdictions and import</p>
+<pre class="mermaid">erDiagram
+  direction TB
+  DEPARTMENT ||--o{ BENEFIT : offers
+  BENEFIT ||--o{ ENROLLMENT_WINDOW : opens
+  BENEFIT ||--o{ ACCESS_RULE : gated_by
+  JURISDICTION ||--o{ EXTERNAL_RESOURCE : issues
+  EXTERNAL_RESOURCE ||--o{ ACCESS_RULE : gated_by
+  CONTACT_CARD ||--o{ CONTACT_BINDING : placed
+  CONTACT_CARD ||--o{ ORG_NODE : staffed_by
+  ORG_NODE ||--o{ ORG_EDGE : parent
+  IMPORT_BATCH ||--o{ IMPORT_ITEM : yields
+  IMPORT_ITEM ||--o| BLOCK : became
+</pre>
+<p style="font-size:10pt; color:var(--color-neutral-600); margin:1em 0 0;">Figure 1. Split into three views for legibility; they are one schema. Employee telemetry (<code>search_event</code>, <code>page_feedback</code>, <code>issue_report</code>, <code>bookmark</code>, <code>page_progress</code>, <code>audit_event</code>) all hang off <code>user</code> with the same shape and are omitted here.</p>
+
+<h3 style="font-size:13pt; margin:1.8em 0 0.6em;">Key tables</h3>
+<table class="table" style="font-size:10pt; width:100%;">
+  <thead><tr><th style="width:22%;">Table</th><th>Fields that matter</th></tr></thead>
+  <tbody>
+    <tr><td><code>user</code></td><td><code>id, email (unique, citext), password_hash, email_verified_at, totp_secret_enc, status (invited|active|deactivated), is_admin, failed_attempts, locked_until</code>. Deactivation sets <code>status</code>; acknowledgment rows are never cascaded.</td></tr>
+    <tr><td><code>employee_profile</code></td><td><code>user_id, display_name, department_id, role_id, employee_type_id, location_id, hire_date, manager_org_node_id, hours_per_week</code>. Every access dimension resolves from this one row.</td></tr>
+    <tr><td><code>tenure_anchor</code></td><td><code>user_id, key (slug), date</code>. <code>hire_date</code> is mirrored here as key <code>hire_date</code> so the rule evaluator has exactly one lookup path for every anchor, built-in or admin-invented (<code>benefits_eligibility_date</code>, <code>transfer_date</code>).</td></tr>
+    <tr><td><code>section</code> / <code>topic</code> / <code>page</code></td><td><code>id, parent_id, title, slug, sort_key (fractional index), state (draft|published|archived), publish_at, unpublish_at, origin, deleted_at, help_contact_card_id, review_due_at</code>. Fractional <code>sort_key</code> makes drag-and-drop a single-row update.</td></tr>
+    <tr><td><code>block</code></td><td><code>id, page_id, kind, sort_key, data (jsonb), source_block_id, source_file_id, summary_stale, snippet_id</code>. <code>summary</code>-kind blocks require one of <code>source_block_id</code> / <code>source_file_id</code> / <code>source_url</code> — enforced by a partial <code>CHECK</code>, so a summary cannot be published unattached.</td></tr>
+    <tr><td><code>page_version</code></td><td><code>page_id, version_no, snapshot (jsonb of blocks), published_at, published_by, effective_date, content_hash</code>. Acknowledgments point here, never at the live page.</td></tr>
+    <tr><td><code>access_rule</code></td><td><code>id, target_type, target_id, effect (allow|deny), conditions (jsonb), visibility_when_locked (hidden|teaser|preview), priority, created_by</code>. Indexed on <code>(target_type, target_id)</code>.</td></tr>
+    <tr><td><code>benefit</code></td><td><code>id, section_id, name, summary_block_id, eligibility_rule_id, waiting_period (jsonb offset expr), enrollment_window (jsonb), carrier_contact_card_id, external_resource_id</code>.</td></tr>
+    <tr><td><code>contact_card</code> / <code>contact_binding</code></td><td>Card holds the fields once, with <code>field_visibility jsonb</code> (per-field: <code>all | managers | admins</code>). Binding is <code>(card_id, target_type, target_id, purpose)</code> — cards are embedded by reference so a changed number changes everywhere.</td></tr>
+    <tr><td><code>external_resource</code></td><td><code>title, purpose, url, authority_kind, jurisdiction_id, category_id, employee_type_ids[], last_verified_at, verified_by, status (suggested|confirmed|broken), internal_first_note</code>. <code>status = 'suggested'</code> is invisible to employees.</td></tr>
+    <tr><td><code>import_batch</code> / <code>import_item</code></td><td>Item carries <code>raw_text, confidence, proposed_kind, proposed_target, decision (pending|accepted|rejected|edited), became_block_id, ocr_mean_confidence</code>. Unclassifiable items get <code>proposed_target = null</code> and surface as "Unsorted".</td></tr>
+    <tr><td><code>audit_event</code></td><td><code>actor_user_id, action, target_type, target_id, before/after (jsonb, PII-redacted), ip_hash, at</code>. Append-only; no update or delete grant on the app role.</td></tr>
+  </tbody>
+</table>
+<p style="font-size:10pt; color:var(--color-neutral-600); margin:0.6em 0 0;">Table 1. Abbreviated; secondary tables (<code>snippet</code>, <code>glossary_term</code>, <code>invite</code>, <code>search_event</code>, <code>notification</code>, <code>content_embedding</code>) follow the same conventions. No table has a tenant, plan or billing column, by design.</p>
+
+<h3 style="font-size:13pt; margin:1.8em 0 0.5em;">Indexes worth naming</h3>
+<ul style="max-width:34em; line-height:1.7; margin:0;">
+  <li><code>page_search</code>: GIN on <code>to_tsvector</code> of title + flattened block text, plus a <code>gin_trgm_ops</code> index on title for fuzzy match.</li>
+  <li><code>access_rule (target_type, target_id)</code> and a partial index on <code>effect = 'deny'</code> — denies are evaluated first and are rare.</li>
+  <li><code>acknowledgment (user_id, page_version_id)</code> unique — re-acknowledgment is a new row against a new version, never an update.</li>
+  <li><code>content_embedding</code> HNSW on the vector column, created lazily by the migration only when the assistant is first enabled.</li>
+</ul>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">3. Access control</h2>
+<p style="max-width:34em; color:var(--color-neutral-700); margin:0 0 1.2em;">One pure function, one place. Signature:</p>
+<pre style="font-family:ui-monospace,monospace; font-size:10pt; line-height:1.6; background:var(--color-neutral-100); padding:14px 16px; border-radius:var(--radius-sm); overflow-x:auto; break-inside:avoid; margin:0 0 1.4em;">evaluate(subject: Subject, node: Node, at: Date): Decision
+
+Subject  = { departmentId, roleId, employeeTypeId, locationId,
+             anchors: Record&lt;string, Date&gt;, groupIds[], userId }
+Decision = { allowed: boolean,
+             visibility: 'full' | 'teaser' | 'preview' | 'hidden',
+             unlockAt: Date | null,
+             reason: { ruleId, clause } | 'inherited' | 'no-rule' }</pre>
+<p style="max-width:34em; margin:0 0 1em;">Nothing else in the codebase reads <code>access_rule</code>. The UI, the search query, the PDF export and the assistant's retriever all call this — search and retrieval by way of a generated SQL predicate compiled from the same rule rows, tested against the function for agreement on every rule shape.</p>
+
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Evaluation order</h3>
+<ol style="max-width:34em; line-height:1.75; margin:0 0 1.4em;">
+  <li>Resolve the ancestor chain, root-first. Evaluate the parent decision before the child; a child can only narrow it. <em>Access narrows down the tree — never widens.</em></li>
+  <li>At each node: if it has no rules, inherit the parent decision verbatim.</li>
+  <li>Conditions inside a rule are ANDed; values inside a condition are ORed. A condition set to <code>"any"</code> or omitted always matches.</li>
+  <li>Any matching <code>deny</code> short-circuits to <code>hidden</code>, regardless of allows, at that node or any ancestor.</li>
+  <li>Otherwise the node is allowed if <em>any</em> <code>allow</code> rule matches, intersected with the parent's allowance.</li>
+  <li>If every condition matches except tenure, the node is <strong>locked, not denied</strong>: return <code>allowed: false</code> with <code>visibility</code> from the rule (default <code>teaser</code>) and the computed <code>unlockAt</code>. This distinction is the product.</li>
+  <li>Return the rule id and the clause that decided it. The preview tool renders it as a sentence.</li>
+</ol>
+
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Tenure and date arithmetic</h3>
+<p style="max-width:34em; margin:0 0 1em;">Offsets are structured, never a day count: <code>{ anchor, unit: day|week|month|year, value, then?: 'first_of_next_month' }</code>. The <code>then</code> modifier is what makes real benefits eligibility expressible — <em>first of the month following hire date + 60 days</em> — and it composes after the offset, not before. All arithmetic runs in the location's timezone at local midnight; a rule must not unlock a day early for a west-coast employee. Month arithmetic clamps (31 January + 1 month = 28 February).</p>
+
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Worked example</h3>
+<p style="max-width:34em; margin:0 0 0.8em;">Subject: part-time employee, Clinical Operations, New Jersey, hired 15 January, evaluated on 1 March. Target: page <em>Retirement plan enrolment</em>, whose parent topic <em>Retirement</em> allows full-time and part-time in NJ or NY with no tenure condition, and whose own two rules are:</p>
+<table class="table" style="font-size:10pt; width:100%; margin-bottom:0.8em;">
+  <thead><tr><th>Rule</th><th>Effect</th><th>Conditions</th><th>Locked visibility</th></tr></thead>
+  <tbody>
+    <tr><td>R1</td><td>allow</td><td>employee_type ∈ {full_time}; location ∈ {NJ, NY}; tenure ≥ 90 days from hire_date</td><td>teaser</td></tr>
+    <tr><td>R2</td><td>allow</td><td>employee_type ∈ {part_time}; hours_per_week ≥ 20; tenure ≥ 12 months from hire_date, then first of next month</td><td>teaser</td></tr>
+  </tbody>
+</table>
+<p style="max-width:34em; margin:0 0 0.6em;">Parent: allowed, full. R1: employee_type fails — no match, discarded. R2: type matches, hours match (24), tenure fails — 15 January + 12 months = 15 January next year, then first of next month = <strong>1 February</strong> of the following year. Every non-tenure condition matched, so rule 6 applies.</p>
+<div style="border-left:3px solid var(--color-accent); padding:10px 0 10px 16px; max-width:34em; break-inside:avoid; margin:0 0 1em;">
+<p style="margin:0; font-size:11pt;"><code>{ allowed: false, visibility: 'teaser', unlockAt: '&lt;next year&gt;-02-01', reason: { ruleId: 'R2', clause: 'tenure' } }</code></p>
+</div>
+<p style="max-width:34em; margin:0;">The employee sees the page title, the unlock date, and the one-line teaser — never the body. The admin's preview tool renders the reason as: <em>"Locked for this person by the rule 'Part-time employees working 20+ hours, one year after hire, from the first of the following month'. Unlocks 1 February."</em></p>
+
+<h3 style="font-size:13pt; margin:1.8em 0 0.5em;">Benefits eligibility</h3>
+<p style="max-width:34em; margin:0 0 1em;">Same function, richer return: <code>{ eligible, eligibleOn, enrollmentOpens, enrollmentCloses, windowState }</code>. The enrolment window is expressed relative to <code>eligibleOn</code> or to a fixed annual date, so open enrolment and new-hire windows use one mechanism. The employee sees their own dates; there is no generic eligibility table in the employee UI.</p>
+
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">The condition builder</h3>
+<p style="max-width:34em; margin:0;">No JSON reaches the admin. Rows of dropdowns compose into a rendered sentence updated live — <em>"Full-time employees in NJ or NY, 90 days after hire"</em> — with a live count of how many current employees the rule matches and a one-click jump into preview-as for any of them. Rejected: a JSON textarea with schema validation — faster to build, unusable by an HR lead.</p>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">4. Import and extraction pipeline</h2>
+<p style="max-width:34em; color:var(--color-neutral-700); margin:0 0 1.2em;">Five stages, each resumable, each leaving an artefact the admin can inspect. Nothing publishes; nothing is discarded.</p>
+<pre class="mermaid">flowchart TD
+  U["Upload or paste<br/>DOCX PDF IMG TXT MD CSV"] --> ST["Store original, immutable"]
+  ST --> EX{"Extract by type"}
+  EX -->|DOCX| M["mammoth: headings, lists, tables"]
+  EX -->|text PDF| PJ["pdfjs: positioned runs"]
+  EX -->|scan| OC["Tesseract OCR, per-word confidence"]
+  M --> CL["Classify and propose structure"]
+  PJ --> CL
+  OC --> CL
+  CL --> RV["Side-by-side review<br/>accept, edit, reassign, reject"]
+  CL -.-> UN["Unsorted bucket, counted"] --> RV
+  RV --> DR["Draft content, nothing published"]
+</pre>
+<h3 style="font-size:13pt; margin:1.8em 0 0.5em;">Classification proposals</h3>
+<table class="table" style="font-size:10pt; width:100%;">
+  <thead><tr><th style="width:34%;">Signal detected</th><th>Proposed as</th></tr></thead>
+  <tbody>
+    <tr><td>Heading hierarchy</td><td>Sections and pages, mapped to existing ones where titles fuzzy-match above threshold</td></tr>
+    <tr><td>Repeated name / email / phone triples</td><td>Contact cards, deduplicated against existing cards by email</td></tr>
+    <tr><td>Table with a "reports to" or "manager" column</td><td>Org chart nodes and edges, with unresolved parents flagged</td></tr>
+    <tr><td>Numbered or "Step 1…" procedure</td><td>Step-by-step guide draft, with the last step flagged as missing a handoff</td></tr>
+    <tr><td>Waiting period phrasing ("after 90 days", "first of the month following")</td><td>Benefit with the tenure offset pre-filled — the parse shown for confirmation, never applied silently</td></tr>
+    <tr><td>An effective date or version line</td><td>Policy page with <code>effective_date</code> set and acknowledgment suggested</td></tr>
+    <tr><td>Long legal prose over a length threshold</td><td>Source block plus an <em>empty</em> summary block queued for authoring — the platform never machine-writes a published summary</td></tr>
+  </tbody>
+</table>
+<p style="max-width:34em; margin:1.2em 0 0;">Every item carries a confidence score; the review queue sorts low-confidence first, and OCR pages under a mean-confidence floor are marked <em>needs a human read</em> rather than imported as text. An empty extraction is a failure, reported as one. Re-importing a document already in the batch history offers a per-item diff against what was accepted last time — accept the change, keep the current version, or fork — never a silent duplicate. After review, imported content is indistinguishable from hand-authored content: same editing, same versioning, same rules.</p>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">5. Deployment and lifecycle</h2>
+<table class="table" style="font-size:10.5pt; width:100%;">
+  <thead><tr><th style="width:18%;">Stage</th><th>What the admin does</th></tr></thead>
+  <tbody>
+    <tr><td>Clone</td><td><code>git clone</code>, <code>cp .env.example .env</code>, set three required values (base URL, database URL, session secret), <code>docker compose up</code>. Compose brings app, Postgres, MinIO and the worker. Nothing external is required to evaluate the product.</td></tr>
+    <tr><td>Boot</td><td>Environment is validated against a schema before the server listens. A missing or malformed variable exits with the variable name, the expected shape and an example — never a stack trace. Migrations run on boot by default, or by <code>npm run migrate</code> if the operator prefers.</td></tr>
+    <tr><td>First run</td><td>Browser setup wizard: first admin account, company name and logo, theme accent, SMTP with a mandatory test send, timezone, optional email-domain allowlist. Ends on a persistent checklist: add departments and locations → import documents → review drafts → set access rules → invite employees. The checklist survives sessions and reflects real state, not a stored step number.</td></tr>
+    <tr><td>Upgrade</td><td><code>git pull</code>, <code>docker compose up --build</code>. Migrations are forward-only, additive by default, and CI runs them against a populated fixture database. Destructive migrations require an explicit flag and are announced in release notes. Documented, versioned upgrade notes; no automatic breaking change.</td></tr>
+    <tr><td>Back up</td><td><code>./scripts/backup.sh</code> writes a timestamped archive of <code>pg_dump</code> plus the object bucket. <code>./scripts/restore.sh</code> takes one and is documented with a rehearsal step. In-app, an admin can export all content as JSON with original files attached — no lock-in.</td></tr>
+    <tr><td>Operate</td><td><code>/healthz</code> (liveness) and <code>/readyz</code> (database, storage, migrations current). Structured JSON logs, no PII. A setup-diagnostics page verifies database, storage, email and auth configuration on demand and is linked from every admin warning banner.</td></tr>
+  </tbody>
+</table>
+<p style="max-width:34em; margin:1.2em 0 0;">A managed-platform path is documented alongside: managed Postgres, an S3 bucket, the app as a container. Sensible defaults target a few hundred employees; the README names what to change at a few thousand (connection pooling, worker concurrency, OCR off the web container, a CDN in front of file reads).</p>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">6. User journeys</h2>
+<h3 style="font-size:13pt; margin:1.2em 0 0.5em;">Day one, fresh clone to first employee</h3>
+<p style="font-size:10.5pt; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600); margin:0 0 0.4em;">a. Deploy to reviewed drafts</p>
+<pre class="mermaid">flowchart TD
+  A["docker compose up"] --> B["Setup wizard: admin, company, SMTP test"]
+  B --> C["Add departments, locations, types, roles"]
+  C --> D["Upload handbook and policy PDFs"]
+  D --> E["Review side-by-side, accept or edit"]
+  E --> F["Drafts, plus an unsorted bucket"]
+</pre>
+<p style="font-size:10.5pt; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600); margin:1.4em 0 0.4em;">b. Drafts to first employee logged in</p>
+<pre class="mermaid">flowchart TD
+  F["Drafts"] --> G["Fill scaffold sections and contacts"]
+  G --> H["Set access rules in the condition builder"]
+  H --> I["Preview as persona, with time travel"]
+  I -.->|rules wrong| H
+  I --> J["Publish, then generate scoped invites"]
+  J --> K["Employee registers and verifies email"]
+  K --> L["Personalised home"]
+</pre>
+<h3 style="font-size:13pt; margin:1.8em 0 0.5em;">Employee, week one</h3>
+<p style="max-width:34em; margin:0 0 1em;">Arrives on a phone, often before any company laptop exists. Lands on the personalised home; sees two outstanding acknowledgments and that a department playbook unlocks on day 30. Reads a policy: summary, key points, who to ask, source one click deeper. Acknowledges — timestamped against the exact version. Searches "when do I get insurance", gets their own eligibility date rather than a table, and a step-by-step guide whose final step hands off to the carrier's enrolment site with the domain shown. Checks steps off for themselves, with the label making clear that nothing was submitted.</p>
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Employee, month six</h3>
+<p style="max-width:34em; margin:0 0 1em;">A life event. Searches "parental leave". Gets a branched guide: their state, their employee type, the company steps and the state agency steps visually distinct. Follows the external handoff, exports the page to PDF for a clinic appointment, and lands on the resolved HR contact card with response-time expectation shown. Nothing here required asking a human first — but the human is named on every screen.</p>
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Admin, ongoing</h3>
+<p style="max-width:34em; margin:0;">Weekly: the failed-search list (the content-gap list), the issue-report queue, content health checks, outstanding acknowledgments. Publishing a new policy version automatically re-triggers acknowledgment for everyone in scope. A delegated department sub-admin edits their own playbook and nothing else.</p>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">7. Screen inventory</h2>
+<table class="table" style="font-size:9.5pt; width:100%;">
+  <thead><tr><th style="width:22%;">Screen</th><th style="width:11%;">Who</th><th style="width:34%;">Does</th><th>Empty state</th></tr></thead>
+  <tbody>
+    <tr><td>Setup wizard</td><td>First admin</td><td>Account, company, theme, SMTP test, timezone, allowlist</td><td>Is the whole empty state; cannot be skipped, can be revisited</td></tr>
+    <tr><td>Admin checklist / dashboard</td><td>Admin</td><td>Setup progress, completion, outstanding acknowledgments, health warnings</td><td>"Nothing published yet — start by adding a department or importing a document," two buttons</td></tr>
+    <tr><td>Employee home</td><td>Employee</td><td>What's new, next unlocks, outstanding acknowledgments, tenure-appropriate entry points, search</td><td>"Your company hasn't published anything yet. Here's who to ask" + resolved HR card</td></tr>
+    <tr><td>Search + results</td><td>Both</td><td>Typo-tolerant full-text, grouped by type, keyboard shortcut, access-filtered</td><td>No results → "Nobody has written this up yet" + report-a-gap + HR card; the query is logged as a failed search</td></tr>
+    <tr><td>Section / topic index</td><td>Employee</td><td>Browse, progress, locked items with unlock dates</td><td>Section with no published pages is hidden from navigation entirely</td></tr>
+    <tr><td>Content page</td><td>Employee</td><td>Summary → key points → guidance → who to ask → source; acknowledge; helpful?; report an issue; print</td><td>Locked → teaser with unlock date; unpublished → not routable</td></tr>
+    <tr><td>Unlock timeline</td><td>Employee</td><td>Personal chronology of what arrives when, including not-yet-unlocked</td><td>"Everything available to you is unlocked."</td></tr>
+    <tr><td>My benefits</td><td>Employee</td><td>Own eligibility status, eligible-on dates, enrolment windows, handoffs</td><td>"No benefits have been set up yet."</td></tr>
+    <tr><td>Org chart</td><td>Employee</td><td>Zoom, collapse, dotted lines, vacancies, jump to own position</td><td>"The org chart hasn't been built yet" + import-CSV hint for admins only</td></tr>
+    <tr><td>Contacts</td><td>Employee</td><td>HR, IT, payroll, benefits, direct manager (resolved), escalation path</td><td>Any unfilled surface is hidden, never shown as an empty card</td></tr>
+    <tr><td>External resources</td><td>Employee</td><td>Federal + own jurisdiction, categories, destination domains, last-verified dates</td><td>"No external resources confirmed for your location yet" + HR card</td></tr>
+    <tr><td>Acknowledgments</td><td>Employee</td><td>Own attestation history with versions attested</td><td>"Nothing needs your acknowledgment."</td></tr>
+    <tr><td>Assistant</td><td>Employee</td><td>Ask, cited answers, handoff when uncovered</td><td>Hidden entirely when disabled — no teaser, no upsell</td></tr>
+    <tr><td>Content editor</td><td>Admin</td><td>Structure tree, block editing, autosave, live employee preview</td><td>"This page has no blocks yet" + block-type picker</td></tr>
+    <tr><td>Access-rule builder</td><td>Admin</td><td>Sentence-rendered conditions, live match count, bulk apply</td><td>"No rule — this page inherits from its section," with the inherited rule shown</td></tr>
+    <tr><td>Preview as</td><td>Admin</td><td>View as a real employee or a persona, with time travel</td><td>Persona form pre-filled from the first available dimension of each kind</td></tr>
+    <tr><td>Import queue + review</td><td>Admin</td><td>Per-file status; side-by-side accept / edit / reassign / reject; unsorted count</td><td>Drop zone with accepted formats and a "paste instead" affordance</td></tr>
+    <tr><td>Analytics</td><td>Admin</td><td>Failed searches first, unanswered assistant questions, page ratings, completion</td><td>"Not enough activity yet — this fills in once employees start searching."</td></tr>
+    <tr><td>Issue queue</td><td>Admin</td><td>Employee reports with page reference attached</td><td>"No open reports."</td></tr>
+    <tr><td>Content health</td><td>Admin</td><td>Broken links, stale drafts, guides with no handoff, unverified resources, pages with no rule, contacts with no owner</td><td>"Everything checks out," with the last-run timestamp</td></tr>
+    <tr><td>People + invites</td><td>Admin</td><td>Roster, CSV import, invite links, approval queue, sessions, deactivate</td><td>"Only you so far — generate an invite link."</td></tr>
+    <tr><td>Audit log</td><td>Admin</td><td>Filterable append-only event stream, exportable</td><td>Never empty after setup</td></tr>
+    <tr><td>Trash</td><td>Admin</td><td>Soft-deleted items, restore, purge</td><td>"Nothing deleted in the last 30 days."</td></tr>
+  </tbody>
+</table>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">8. UI/UX direction</h2>
+<h3 style="font-size:13pt; margin:1.2em 0 0.5em;">Information architecture</h3>
+<p style="max-width:34em; margin:0 0 1em;">Search is the primary navigation; browse is the fallback. The employee shell is four destinations — <em>Home, Browse, My things</em> (benefits, timeline, acknowledgments, bookmarks), <em>Help</em> (contacts and external resources) — plus a persistent search affordance and, if enabled, the assistant. Depth is capped at section → topic → page; a fourth level is a signal the content should be split, and the editor says so.</p>
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Interaction patterns</h3>
+<ul style="max-width:34em; line-height:1.7; margin:0 0 1.2em;">
+  <li><strong>Progressive disclosure as a fixed page order.</strong> Summary, key points, guidance, who to ask, source. The same five beats on every long document, so the shape becomes learnable.</li>
+  <li><strong>Locked ≠ absent.</strong> Locked items render in place with title, unlock date and teaser, styled as anticipated rather than forbidden. Knowing what is coming is core value.</li>
+  <li><strong>Internal versus external is a visual language, not a word.</strong> Internal steps and cards sit on the paper ground; external handoffs take the second accent, the destination domain, an external-link mark and a last-verified date. One glance answers "does clicking this leave the company?"</li>
+  <li><strong>Summary labelling is persistent and inline.</strong> Every summary carries an admin-editable note that it is a plain-language summary, that the linked source governs, and the resolved contact card rendered inline — not a footer.</li>
+  <li><strong>Personal checklists say so.</strong> Checking a guide step shows "for your own tracking — this notifies no one and submits nothing" next to the control, not in a tooltip.</li>
+  <li><strong>Editing in context.</strong> The admin edits inside the employee layout with a preview toggle, autosave and a visible save state; no disconnected back office.</li>
+</ul>
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Visual system</h3>
+<p style="max-width:34em; margin:0 0 1em;">Broadsheet: near-black serif on paper white, hierarchy from the type scale and whitespace rather than boxes and rules. Reading measure held at 65–75 characters. Cyan for interactive elements, magenta reserved for the rarer second signal — here, external handoffs. The company's logo and accent are set at setup and override the accent token; light and dark themes both ship. Motion is subtle and purposeful, and respects <code>prefers-reduced-motion</code>.</p>
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Mobile and accessibility</h3>
+<p style="max-width:34em; margin:0;">Phone layout is designed and tested first: one-handed reach, 44px minimum targets, bottom navigation, installable as a PWA with published content cached for offline reading. WCAG 2.1 AA is verified, not assumed — automated axe checks in CI, keyboard traversal of every flow, real focus rings, screen-reader-correct landmarks and heading order, and alt text enforced at upload time rather than requested.</p>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">9. API surface</h2>
+<p style="max-width:34em; color:var(--color-neutral-700); margin:0 0 1.2em;">Route handlers under <code>/api</code>, session-cookie authenticated, CSRF-protected on mutations. Every content read passes through the evaluator; there is no unfiltered read path.</p>
+<table class="table" style="font-size:9.5pt; width:100%;">
+  <thead><tr><th style="width:34%;">Endpoint</th><th style="width:16%;">Auth</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>POST /auth/register</code>, <code>/login</code>, <code>/logout</code>, <code>/logout-all</code></td><td>Public / session</td><td>Rate-limited, generic failures, progressive lockout</td></tr>
+    <tr><td><code>POST /auth/verify</code>, <code>/reset/request</code>, <code>/reset/confirm</code>, <code>/totp/*</code></td><td>Public / session</td><td>Single-use, expiring tokens; TOTP optional</td></tr>
+    <tr><td><code>GET /me</code>, <code>PATCH /me</code>, <code>GET /me/sessions</code></td><td>Employee</td><td>Own profile only; PII field-filtered</td></tr>
+    <tr><td><code>GET /content/tree</code></td><td>Employee</td><td>Access-filtered navigation with lock states and unlock dates</td></tr>
+    <tr><td><code>GET /content/pages/:slug</code></td><td>Employee</td><td>Returns blocks, or teaser payload when locked; never partial body</td></tr>
+    <tr><td><code>GET /search?q=</code></td><td>Employee</td><td>Filter compiled into the query; logs the event including zero-result queries</td></tr>
+    <tr><td><code>GET /me/timeline</code>, <code>/me/benefits</code>, <code>/me/acknowledgments</code>, <code>/me/bookmarks</code></td><td>Employee</td><td>Eligibility dates from the evaluator, never client-computed</td></tr>
+    <tr><td><code>POST /acknowledgments</code></td><td>Employee</td><td>Body carries the <code>page_version_id</code> and content hash the client rendered; mismatch rejected</td></tr>
+    <tr><td><code>GET /contacts/resolve?target=</code></td><td>Employee</td><td>page → section → department → default HR fallback chain</td></tr>
+    <tr><td><code>GET /external-resources</code></td><td>Employee</td><td>Federal + own jurisdiction by default; <code>status = confirmed</code> only</td></tr>
+    <tr><td><code>GET /files/:id</code></td><td>Employee</td><td>Access-checked redirect to a short-lived signed URL; no public bucket</td></tr>
+    <tr><td><code>POST /feedback</code>, <code>/issues</code></td><td>Employee</td><td>Helpful-vote and issue report with page reference</td></tr>
+    <tr><td><code>POST /assistant/ask</code></td><td>Employee</td><td>404 when disabled; retrieval pre-filtered; response always cited</td></tr>
+    <tr><td><code>* /admin/sections|topics|pages|blocks</code></td><td>Admin (scoped)</td><td>CRUD, reorder, duplicate, move, bulk; scope checked per target</td></tr>
+    <tr><td><code>* /admin/access-rules</code>, <code>POST /admin/access-rules/explain</code></td><td>Admin</td><td>Explain returns the evaluator's reason for a given subject — powers preview-as</td></tr>
+    <tr><td><code>POST /admin/preview-as</code></td><td>Admin</td><td>Issues a scoped, expiring, read-only preview context with an optional simulated date</td></tr>
+    <tr><td><code>* /admin/imports</code>, <code>/imports/:id/items/:itemId</code></td><td>Admin</td><td>Upload, status, per-item decisions, re-import diff</td></tr>
+    <tr><td><code>* /admin/people</code>, <code>/invites</code>, <code>/sessions</code></td><td>Admin</td><td>Roster, CSV import, invite scoping and revocation, session revocation</td></tr>
+    <tr><td><code>GET /admin/analytics/*</code>, <code>/health-checks</code>, <code>/audit</code></td><td>Admin</td><td>CSV export on each</td></tr>
+    <tr><td><code>GET /healthz</code>, <code>/readyz</code></td><td>Public</td><td>No content, no version disclosure beyond a build id</td></tr>
+  </tbody>
+</table>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">10. The optional AI assistant</h2>
+<p style="max-width:34em; color:var(--color-neutral-700); margin:0 0 1.2em;">Off by default, disableable, and load-bearing for nothing. No other feature may call into it. The highest-severity failure in the system is an employee learning the contents of a locked page through the assistant, so the access filter is applied to <em>retrieval</em>, in SQL, before any text reaches a model — never by instructing the model.</p>
+<pre class="mermaid">flowchart TD
+  Q["Employee question"] --> AC{"Enabled and under cap"}
+  AC -->|no| OFF["Feature absent, or capped notice"]
+  AC -->|yes| RET["Compile access predicate, then retrieve<br/>published and permitted chunks only"]
+  RET --> HIT{"Retrieved and cited"}
+  HIT -->|no| HAND["Nothing on that, plus resolved contact card"]
+  HIT -->|yes| ANS["Answer, sources, summary label, who to ask"]
+  HAND --> LOG["Log questions and gaps into analytics"]
+  ANS --> LOG
+</pre>
+<p style="font-size:10pt; color:var(--color-neutral-600); margin:0.6em 0 0;">The model call sits between retrieval and the citation gate: content is delimited as data, and a response whose citation ids are not all in the retrieved set is discarded and replaced by the handoff.</p>
+<h3 style="font-size:13pt; margin:1.8em 0 0.5em;">Rules it operates under</h3>
+<ul style="max-width:34em; line-height:1.7; margin:0 0 1.2em;">
+  <li>Answers only from published content in this instance. It does not answer general employment-law questions, and it does not answer from model knowledge.</li>
+  <li>Uncited answer is a bug: the response is discarded and replaced with the handoff. Enforced by post-generation validation of citation ids against the retrieved set, not by prompt wording.</li>
+  <li>It restates and locates. It does not interpret law, compute a legal deadline, weigh benefit options, or say what an employee is owed. Any date it states — an eligibility date, an enrolment window — comes from the evaluator's output injected as a fact, never from model arithmetic.</li>
+  <li>Retrieved content is data, delimited and never instruction. Tested with a document containing injected instructions as a standing regression case.</li>
+  <li>Provider is admin-supplied and can point at a local model. The platform ships with no credentials and makes no call until configured. Usage estimate and a monthly call cap are visible in admin.</li>
+  <li>Questions and unanswered questions feed the same analytics as failed searches — the content-gap list. Per-answer feedback lands in the admin queue beside page reports.</li>
+</ul>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">11. Security and privacy</h2>
+<table class="table" style="font-size:10pt; width:100%;">
+  <thead><tr><th style="width:24%;">Surface</th><th>Posture</th></tr></thead>
+  <tbody>
+    <tr><td>Passwords</td><td>Argon2id with tuned parameters recorded in config; rehash on login when parameters change. Breach-list check on set, minimum length over composition rules.</td></tr>
+    <tr><td>Sessions</td><td>Opaque 256-bit tokens, hashed at rest, <code>HttpOnly; Secure; SameSite=Lax</code>; sliding expiry with absolute cap; per-session device and last-seen for the admin view; revocation is a delete.</td></tr>
+    <tr><td>Brute force</td><td>Per-account and per-IP limits with progressive delay on login, reset and invite redemption. Failure messages never reveal whether an address exists.</td></tr>
+    <tr><td>Uploads</td><td>Type sniffed, not trusted from extension; size capped; stored outside the web root under random keys; served only through the access-checked route; ClamAV scan in the worker where available; PDFs and images rendered in a sandboxed viewer with no active content.</td></tr>
+    <tr><td>PII</td><td>Personal contact details, hire dates and eligibility status are the sensitive set. Field-level visibility enforced in the serialiser — the single place responses are built — so no route can leak a mobile number by forgetting a filter. Excluded from logs, audit diffs and error reports. Never present on an unauthenticated response.</td></tr>
+    <tr><td>Authorisation</td><td>One evaluator, called server-side. Admin scope checked per target, not per route group. Preview-as contexts are read-only and cannot mutate or acknowledge.</td></tr>
+    <tr><td>Transport and headers</td><td>HTTPS assumed and documented behind a proxy; HSTS, strict CSP with nonces, no inline event handlers, frame-ancestors none.</td></tr>
+    <tr><td>Data at rest</td><td>Disk encryption is the deployment's responsibility and is documented; TOTP secrets are encrypted with a key from the environment. Full-database encryption is not claimed.</td></tr>
+  </tbody>
+</table>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">12. Build sequence</h2>
+<table class="table" style="font-size:10pt; width:100%;">
+  <thead><tr><th style="width:16%;">Milestone</th><th style="width:42%;">Ships</th><th>Deliberately waits</th></tr></thead>
+  <tbody>
+    <tr><td>M0 — Skeleton</td><td>Compose stack, env validation, migrations, health checks, auth (register, verify, login, reset, sessions), setup wizard, dimension tables</td><td>Everything content</td></tr>
+    <tr><td>M1 — Content core</td><td>Section/topic/page/block model, rich text, document, image, callout, contact card, external link, table; draft/publish/archive; versioning; reorder; soft delete</td><td>Guides, summaries, benefits</td></tr>
+    <tr><td>M2 — Access engine <span class="tag tag-accent" style="margin-left:6px;">the keystone</span></td><td>The evaluator, condition builder, inheritance, lock visibility, tenure and eligibility date math, preview-as with time travel, full test suite</td><td>Bulk rule application</td></tr>
+    <tr><td>M3 — The reading experience</td><td>Summary and step-by-step guide blocks with handoff enforcement, contact resolution chain, acknowledgment with re-acknowledgment, employee home, search, print/PDF, mobile pass, AA audit</td><td>Branching guides</td></tr>
+    <tr><td colspan="3" style="background:var(--color-neutral-100); font-style:italic;">MVP line — a company can deploy, author, gate and publish, and employees can read, acknowledge and find who to ask.</td></tr>
+    <tr><td>M4 — Import</td><td>DOCX and text-PDF extraction, classification, side-by-side review, unsorted bucket, CSV people and org import</td><td>OCR, re-import diff</td></tr>
+    <tr><td>M5 — Benefits and jurisdictions</td><td>Benefit entities with eligibility output, unlock timeline, eligibility checker, external resources with confirmation flow and jurisdiction scoping, org chart</td><td>—</td></tr>
+    <tr><td>M6 — Admin at scale</td><td>Search analytics, issue queue, health checks, audit log UI, bulk operations, find-and-replace, snippets, delegated sub-admin scopes, exports</td><td>—</td></tr>
+    <tr><td>M7 — Optional extras</td><td>OCR and scanned PDFs, re-import diff, branching guides, knowledge checks, PWA offline, notifications, TOTP enforcement</td><td>—</td></tr>
+    <tr><td>M8 — Assistant</td><td>Provider layer, embeddings, filtered retrieval, citation validation, caps, analytics integration, injection regression tests</td><td>—</td></tr>
+  </tbody>
+</table>
+<p style="max-width:34em; margin:1.2em 0 0;">The access engine lands before the reading experience on purpose: retrofitting gating into pages already built to render everything is how leaks get shipped.</p>
+
+<h2 style="break-before:page; font-size:22pt; margin:0 0 0.2em;">13. Open questions and risks</h2>
+<h3 style="font-size:13pt; margin:1.2em 0 0.5em;">Questions that would change the architecture</h3>
+<ol style="max-width:34em; line-height:1.75; margin:0 0 1.4em;">
+  <li><strong>Does an employee ever need to see another employee's eligibility or acknowledgment status?</strong> If managers need team completion views, the access model gains a second axis (subject-about-subject) and the org chart becomes load-bearing for authorisation, not just navigation. Assumed no for now.</li>
+  <li><strong>Is content ever multilingual?</strong> Per-locale page versions are cheap to design in now and expensive to retrofit, because acknowledgment must attest a specific language version. Assumed single-language.</li>
+  <li><strong>Who owns "location"?</strong> Work state drives jurisdiction, but remote employees have a work state that differs from the site. Modelled as location on the profile with an optional distinct <code>work_state</code>; confirm whether both are needed.</li>
+  <li><strong>Does acknowledgment need to be legally defensible evidence?</strong> If yes, the attestation record needs a hash chain or external timestamping, not just a database row. Currently: version hash plus append-only audit.</li>
+  <li><strong>Expected scale of the first adopter</strong> — a few hundred or a few thousand employees changes worker sizing and whether OCR belongs in the web container.</li>
+  <li><strong>Is a manager tier really out of scope?</strong> Field-level visibility already says "visible to managers", which is a role-like distinction inside a two-tier model. Currently derived from the org chart rather than a third tier — confirm that holds.</li>
+</ol>
+<h3 style="font-size:13pt; margin:1.6em 0 0.5em;">Risks</h3>
+<table class="table" style="font-size:10pt; width:100%;">
+  <thead><tr><th style="width:30%;">Risk</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    <tr><td>Locked content leaks through search, export, the assistant or an API edge</td><td>One evaluator; the SQL predicate is property-tested for agreement with the function; leak tests are first-class, not incidental</td></tr>
+    <tr><td>A wrong eligibility date — silent, high-consequence, nobody notices</td><td>Date math is a separate tested module with a table-driven fixture set covering month clamping, DST, timezone boundaries and the first-of-next-month modifier</td></tr>
+    <tr><td>Import quality determines adoption, and real handbooks are messy</td><td>Nothing auto-publishes; nothing is discarded; confidence sorted to the top; the original file always survives, downloadable</td></tr>
+    <tr><td>A dead external link at the worst possible moment</td><td>No pre-seeded URLs asserted as correct; admin confirmation required before employees see any; scheduled link checks and last-verified dates on the card</td></tr>
+    <tr><td>Employees believe they have filed something they have not</td><td>Handoff enforcement, distinct external affordances with the domain shown, and explicit personal-checklist labelling</td></tr>
+    <tr><td>Scaffold sections drift into hardcoded assumptions</td><td><code>origin = 'scaffold'</code> is inert data; a CI check greps for section-slug literals in application code and fails the build</td></tr>
+    <tr><td>The admin abandons setup halfway</td><td>State-derived checklist, diagnostics page, and a product that is useful with one section published</td></tr>
+  </tbody>
+</table>
+
+<h3 style="font-size:13pt; margin:2em 0 0.5em;">Assumptions made without asking</h3>
+<ul style="max-width:34em; line-height:1.7; margin:0;">
+  <li>English-only content, one timezone default with per-location overrides.</li>
+  <li>Employees have an email address the company can reach; invite-by-link covers those who do not yet.</li>
+  <li>Acknowledgment is an internal attestation only, with no external legal filing character.</li>
+  <li>No manager tier; manager-visible fields resolve from the org chart.</li>
+  <li>Sample content ships as a clearly labelled demo set, removable in one action, containing no live external URLs.</li>
+</ul>
+
+</doc-page>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  async componentDidMount() {
+    try {
+      const m = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const mermaid = m.default;
+      const cs = getComputedStyle(document.documentElement);
+      const v = (n, f) => (cs.getPropertyValue(n) || '').trim() || f;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        fontFamily: v('--font-body', 'Source Serif 4, serif'),
+        themeVariables: {
+          background: v('--color-bg', '#f3f2f2'),
+          primaryColor: v('--color-neutral-100', '#eae8e7'),
+          primaryTextColor: v('--color-text', '#201e1d'),
+          primaryBorderColor: v('--color-text', '#201e1d'),
+          lineColor: v('--color-accent', '#0088b0'),
+          secondaryColor: v('--color-accent-100', '#dbeef4'),
+          tertiaryColor: v('--color-bg', '#f3f2f2'),
+          fontSize: '17px'
+        }
+      });
+      if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+      const render = async () => {
+        const nodes = [...document.querySelectorAll('pre.mermaid')];
+        for (let i = 0; i < nodes.length; i++) {
+          const el = nodes[i];
+          if (!el.dataset.src) el.dataset.src = el.textContent;
+          const src = el.dataset.src;
+          try {
+            const { svg } = await mermaid.render('dcm' + i + '_' + Date.now(), src);
+            el.innerHTML = svg;
+            const s = el.querySelector('svg');
+            if (s) {
+              const vb = (s.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+              s.removeAttribute('height');
+              s.style.height = 'auto';
+              s.style.maxWidth = '100%';
+              s.style.width = vb[2] ? vb[2] + 'px' : 'auto';
+            }
+          } catch (e) {
+            console.warn('mermaid diagram ' + i + ' failed', e && e.message);
+          }
+        }
+      };
+      await render();
+      setTimeout(render, 1500);
+    } catch (e) {
+      console.warn('mermaid unavailable', e);
+    }
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

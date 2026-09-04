@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/broadsheet-2d7b5a60-91fc-425f-af96-3a27567b7e97/styles.css">
+<script src="_ds/broadsheet-2d7b5a60-91fc-425f-af96-3a27567b7e97/_ds_bundle.js"></script>
+<style>
+  body { margin: 0; background: var(--color-neutral-200); }
+  a { color: var(--color-accent-700); text-underline-offset: 2px; }
+  a:hover { color: var(--color-accent-600); }
+  button, select, input { font-family: var(--font-body); }
+  input.e-search::placeholder { color: var(--color-neutral-600); }
+  button:focus-visible, select:focus-visible, [tabindex]:focus-visible, a:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+</style>
+</helmet>
+
+<div style="min-height:100vh; padding:0 0 48px;">
+
+  <div style="background:var(--color-text); color:var(--color-neutral-100); padding:9px 18px; display:flex; flex-wrap:wrap; align-items:center; gap:9px 20px; position:sticky; top:0; z-index:40;">
+    <span style="font-size:9.5px; letter-spacing:0.15em; text-transform:uppercase; opacity:0.6;">Viewing as</span>
+    <div style="display:flex; gap:4px; flex-wrap:wrap;">
+      <sc-for list="{{ personaChips }}" as="p" hint-placeholder-count="6">
+        <button onClick="{{ p.select }}" style="{{ p.css }}">{{ p.label }}</button>
+      </sc-for>
+    </div>
+    <div style="display:flex; align-items:center; gap:4px; margin-left:auto;">
+      <sc-for list="{{ deviceChips }}" as="d" hint-placeholder-count="2">
+        <button onClick="{{ d.select }}" style="{{ d.css }}">{{ d.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <p style="margin:0; padding:11px 18px 0; font-size:12px; line-height:1.5; color:var(--color-neutral-700); max-width:86ch;">Employee view. Everything below is data an admin entered — role, responsibilities, jurisdiction, documents. <span style="color:var(--color-accent-2-700);">Sample company, removable in one action.</span> Nothing on this screen files or submits anything.</p>
+
+  <div style="display:flex; justify-content:center; padding:20px 14px 0;">
+    <div style="width:100%; max-width:{{ shellMax }}; background:var(--color-bg); box-shadow:var(--shadow-lg);">
+
+      <div style="padding:15px 22px 0; display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:9px;">
+          <span style="display:inline-block; width:10px; height:10px; background:var(--color-accent);"></span>
+          <span style="font-size:14px;">{{ company }}</span>
+        </div>
+        <span style="font-size:10.5px; letter-spacing:0.13em; text-transform:uppercase; color:var(--color-neutral-600);">{{ industryLabel }}</span>
+      </div>
+
+      <div style="padding:10px 22px 0;">
+        <p style="margin:0 0 2px; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">Signed in · {{ signedInMethod }}</p>
+        <p style="margin:0; font-size:14px; line-height:1.5; color:var(--color-neutral-800); max-width:70ch;">{{ signedInLine }}</p>
+        <p style="margin:3px 0 0; font-size:12.5px; color:{{ statusColor }};">{{ statusLine }}</p>
+      </div>
+
+      <div style="padding:16px 22px 0;">
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+          <input class="e-search" value="{{ query }}" onChange="{{ setQuery }}" placeholder="{{ searchPlaceholder }}" style="flex:1 1 240px; min-width:0; font-size:15px; padding:11px 13px; border:1px solid var(--color-neutral-400); background:var(--color-bg); color:var(--color-text); border-radius:2px;" />
+          <sc-if value="{{ isSearching }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ clearQuery }}" style="font-size:13px; padding:9px 14px; border:1px solid var(--color-neutral-400); background:transparent; color:var(--color-neutral-700); cursor:pointer;">Clear</button>
+          </sc-if>
+        </div>
+        <sc-if value="{{ showSuggestions }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; flex-wrap:wrap; gap:7px; margin:10px 0 0; align-items:baseline;">
+            <span style="font-size:11.5px; color:var(--color-neutral-600);">People here search</span>
+            <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="4">
+              <button onClick="{{ s.select }}" style="font-size:12.5px; padding:5px 10px; border:1px solid var(--color-neutral-300); background:transparent; color:var(--color-accent-700); cursor:pointer; border-radius:2px;">{{ s.label }}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="padding:14px 22px 0; display:flex; gap:2px 18px; flex-wrap:wrap; border-bottom:1px solid var(--color-neutral-300);">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <button onClick="{{ t.select }}" style="{{ t.css }}">{{ t.label }}</button>
+        </sc-for>
+      </div>
+
+      <div style="padding:{{ pad }};">
+
+        <sc-if value="{{ showHeader }}" hint-placeholder-val="{{ true }}">
+          <p style="margin:0 0 7px; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">{{ metaLine }}</p>
+          <h1 style="margin:0 0 8px; font-size:{{ h1 }}; line-height:1.06; letter-spacing:-0.015em;">{{ pageTitle }}</h1>
+          <p style="margin:0 0 30px; font-size:15px; line-height:1.55; color:var(--color-neutral-700); max-width:62ch;">{{ pageIntro }}</p>
+        </sc-if>
+
+        <sc-if value="{{ isSearching }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:0 0 7px; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">{{ resultMeta }}</p>
+          <h1 style="margin:0 0 8px; font-size:{{ h1 }}; line-height:1.06; letter-spacing:-0.015em;">{{ resultTitle }}</h1>
+          <p style="margin:0 0 32px; font-size:15px; line-height:1.55; color:var(--color-neutral-700); max-width:62ch;">{{ resultIntro }}</p>
+
+          <sc-for list="{{ resultGroups }}" as="g" hint-placeholder-count="3">
+            <section style="margin:0 0 36px;">
+              <h2 style="margin:0 0 4px; font-size:{{ h2 }};">{{ g.label }}</h2>
+              <p style="margin:0 0 14px; font-size:12.5px; line-height:1.5; color:var(--color-neutral-700); max-width:56ch;">{{ g.note }}</p>
+              <div style="display:flex; flex-direction:column;">
+                <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="3">
+                  <article style="display:grid; grid-template-columns:{{ resultCols }}; gap:6px 24px; align-items:baseline; padding:17px 0; border-top:1px solid var(--color-neutral-300);">
+                    <div>
+                      <p style="margin:0 0 3px; font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:{{ r.color }};">{{ r.kind }}</p>
+                      <p style="margin:0; font-size:12.5px; line-height:1.45; color:{{ r.stateColor }};">{{ r.state }}</p>
+                    </div>
+                    <div>
+                      <h3 style="margin:0 0 4px; font-size:18px; line-height:1.28;">{{ r.title }}</h3>
+                      <p style="margin:0 0 8px; font-size:14.5px; line-height:1.58; color:var(--color-neutral-800); max-width:60ch;">{{ r.text }}</p>
+                      <div style="display:flex; flex-wrap:wrap; gap:8px 14px; align-items:baseline; font-size:13.5px;">
+                        <a href="#open">{{ r.action }}</a>
+                        <span style="font-size:11.5px; color:var(--color-neutral-600);">{{ r.found }}</span>
+                      </div>
+                    </div>
+                  </article>
+                </sc-for>
+              </div>
+            </section>
+          </sc-for>
+
+          <section style="margin:0 0 8px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">{{ askTitle }}</h2>
+            <p style="margin:0 0 20px; font-size:13.5px; line-height:1.58; color:var(--color-neutral-700); max-width:60ch;">{{ askIntro }}</p>
+            <div style="border-left:3px solid var(--color-accent); padding:2px 0 2px 17px; margin:0 0 18px;">
+              <p style="margin:0 0 3px; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">{{ askPurpose }}</p>
+              <p style="margin:0 0 1px; font-size:19px; line-height:1.25;">{{ askName }}</p>
+              <p style="margin:0 0 10px; font-size:13.5px; color:var(--color-neutral-700);">{{ askRole }}</p>
+              <div style="display:flex; flex-wrap:wrap; gap:8px 16px; align-items:baseline; font-size:14px;">
+                <a href="{{ askMailto }}">Email this question ↗</a>
+                <a href="#tel">{{ askPhone }}</a>
+              </div>
+              <p style="margin:10px 0 0; font-size:12.5px; line-height:1.5; color:var(--color-neutral-600); max-width:48ch;">{{ askAbout }}</p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <sc-for list="{{ askRoutes }}" as="a" hint-placeholder-count="2">
+                <div>
+                  <p style="margin:0 0 2px; font-size:15.5px; line-height:1.3;">{{ a.who }}</p>
+                  <p style="margin:0; font-size:13px; line-height:1.5; color:var(--color-neutral-700); max-width:58ch;">{{ a.when }}</p>
+                </div>
+              </sc-for>
+            </div>
+            <p style="margin:20px 0 0; font-size:12.5px; line-height:1.6; font-style:italic; color:var(--color-neutral-700); max-width:62ch;">{{ askLogged }}</p>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isNewHire }}" hint-placeholder-val="{{ false }}">
+          <section style="margin:0 0 40px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">Your first 90 days</h2>
+            <p style="margin:0 0 14px; font-size:13.5px; line-height:1.55; color:var(--color-neutral-700); max-width:58ch;">{{ newHireLine }}</p>
+            <div style="height:11px; background:var(--color-neutral-300); margin:0 0 20px; max-width:520px;">
+              <div style="height:11px; background:var(--color-accent-2-500); width:{{ newHirePct }};"></div>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+              <sc-for list="{{ onboarding }}" as="o" hint-placeholder-count="5">
+                <div style="display:grid; grid-template-columns:{{ pinCols }}; gap:4px 24px; align-items:baseline; padding:14px 0; border-top:1px solid var(--color-neutral-300);">
+                  <p style="margin:0; font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:{{ o.color }};">{{ o.when }}</p>
+                  <div>
+                    <p style="margin:0 0 3px; font-size:16.5px; line-height:1.3;">{{ o.title }}</p>
+                    <p style="margin:0; font-size:13.5px; line-height:1.55; color:var(--color-neutral-700); max-width:60ch;">{{ o.note }}</p>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <section style="margin:0 0 40px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">Pinned for you</h2>
+            <p style="margin:0 0 20px; font-size:13.5px; line-height:1.55; color:var(--color-neutral-700); max-width:58ch;">The things people in {{ deptName }} open most, chosen by your admin. You only see the pins that apply to your role, your employee type and your site.</p>
+            <div style="display:flex; flex-direction:column;">
+              <sc-for list="{{ pinned }}" as="p" hint-placeholder-count="4">
+                <article style="display:grid; grid-template-columns:{{ pinCols }}; gap:6px 24px; align-items:baseline; padding:16px 0; border-top:1px solid var(--color-neutral-300);">
+                  <div>
+                    <p style="margin:0 0 3px; font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:{{ p.color }};">{{ p.kind }}</p>
+                    <p style="margin:0; font-size:12px; color:var(--color-neutral-600);">{{ p.why }}</p>
+                  </div>
+                  <div>
+                    <h3 style="margin:0 0 4px; font-size:18px; line-height:1.28;">{{ p.title }}</h3>
+                    <p style="margin:0 0 8px; font-size:14.5px; line-height:1.58; color:var(--color-neutral-800); max-width:60ch;">{{ p.note }}</p>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center;">
+                      <a href="#open" style="font-size:13.5px;">{{ p.action }}</a>
+                      <sc-if value="{{ p.ackable }}" hint-placeholder-val="{{ false }}">
+                        <button onClick="{{ p.ack }}" style="{{ p.ackCss }}">{{ p.ackLabel }}</button>
+                      </sc-if>
+                    </div>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="margin:0 0 40px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">Your record</h2>
+            <p style="margin:0 0 20px; font-size:13.5px; line-height:1.55; color:var(--color-neutral-700); max-width:58ch;">What your sign-in tells the platform about you. Everything on every tab is filtered through these six values — change one and the whole handbook changes with it.</p>
+            <div style="display:grid; grid-template-columns:{{ gridCols }}; gap:24px 30px;">
+              <sc-for list="{{ record }}" as="r" hint-placeholder-count="6">
+                <div>
+                  <p style="margin:0 0 4px; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">{{ r.label }}</p>
+                  <p style="margin:0 0 3px; font-size:{{ r.size }}; line-height:1.15;">{{ r.value }}</p>
+                  <p style="margin:0; font-size:12.5px; line-height:1.5; color:var(--color-neutral-700); max-width:34ch;">{{ r.note }}</p>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+
+          <sc-if value="{{ hasUpcoming }}" hint-placeholder-val="{{ false }}">
+            <section style="margin:0 0 40px;">
+              <h2 style="margin:0 0 6px; font-size:{{ h2 }};">Coming up for you</h2>
+              <p style="margin:0 0 20px; font-size:13.5px; line-height:1.55; color:var(--color-neutral-700); max-width:58ch;">{{ upcomingNote }}</p>
+              <div style="display:flex; flex-direction:column;">
+                <sc-for list="{{ upcoming }}" as="u" hint-placeholder-count="2">
+                  <article style="display:grid; grid-template-columns:{{ pinCols }}; gap:4px 24px; align-items:baseline; padding:15px 0; border-top:1px solid var(--color-neutral-300);">
+                    <div>
+                      <p style="margin:0 0 2px; font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--color-accent-2-700);">{{ u.when }}</p>
+                      <p style="margin:0; font-size:12px; color:var(--color-neutral-600);">{{ u.origin }}</p>
+                    </div>
+                    <div>
+                      <p style="margin:0 0 3px; font-size:17px; line-height:1.3;">{{ u.title }}</p>
+                      <p style="margin:0 0 4px; font-size:14px; line-height:1.55; color:var(--color-neutral-800); max-width:60ch;">{{ u.what }}</p>
+                      <p style="margin:0; font-size:12.5px; color:var(--color-neutral-600);">{{ u.notice }}</p>
+                    </div>
+                  </article>
+                </sc-for>
+              </div>
+            </section>
+          </sc-if>
+
+          <section style="margin:0 0 40px;">
+            <div style="display:grid; grid-template-columns:{{ gridCols }}; gap:26px 30px;">
+              <sc-for list="{{ homeStats }}" as="s" hint-placeholder-count="4">
+                <div>
+                  <p style="margin:0 0 4px; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">{{ s.label }}</p>
+                  <p style="margin:0 0 3px; font-size:27px; line-height:1.1;">{{ s.value }}</p>
+                  <p style="margin:0; font-size:12.5px; line-height:1.5; color:var(--color-neutral-700); max-width:34ch;">{{ s.note }}</p>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="margin:0 0 40px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">The four questions people in your role ask</h2>
+            <p style="margin:0 0 20px; font-size:13.5px; color:var(--color-neutral-700); max-width:58ch;">Answered from your own record — your role, your employee type, {{ jurisdictionPhrase }}.</p>
+            <div style="display:flex; flex-direction:column;">
+              <sc-for list="{{ quickAnswers }}" as="q" hint-placeholder-count="4">
+                <article style="padding:18px 0; border-top:1px solid var(--color-neutral-300);">
+                  <h3 style="margin:0 0 5px; font-size:18px; line-height:1.28;">{{ q.q }}</h3>
+                  <p style="margin:0 0 8px; font-size:15px; line-height:1.6; max-width:62ch;">{{ q.a }}</p>
+                  <p style="margin:0; font-size:12px; color:var(--color-neutral-600);">{{ q.source }}</p>
+                </article>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="margin:0 0 8px;">
+            <h2 style="margin:0 0 18px; font-size:{{ h2 }};">Waiting on you</h2>
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <sc-for list="{{ todos }}" as="t" hint-placeholder-count="3">
+                <div style="border-left:3px solid var(--color-accent); padding:1px 0 1px 15px;">
+                  <p style="margin:0 0 3px; font-size:16.5px; line-height:1.3;">{{ t.title }}</p>
+                  <p style="margin:0; font-size:13.5px; line-height:1.5; color:var(--color-neutral-700); max-width:60ch;">{{ t.note }}</p>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isRole }}" hint-placeholder-val="{{ false }}">
+          <section style="margin:0 0 40px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">What you are responsible for</h2>
+            <p style="margin:0 0 8px; font-size:13.5px; color:var(--color-neutral-700); max-width:58ch;">Written by your department, not by HR. Each line names how often it lands and who checks it.</p>
+            <div style="display:flex; flex-direction:column;">
+              <sc-for list="{{ duties }}" as="d" hint-placeholder-count="5">
+                <article style="display:grid; grid-template-columns:{{ dutyCols }}; gap:4px 22px; padding:17px 0; border-top:1px solid var(--color-neutral-300);">
+                  <div>
+                    <p style="margin:0; font-size:12px; letter-spacing:0.09em; text-transform:uppercase; color:var(--color-accent-700);">{{ d.cadence }}</p>
+                    <p style="margin:2px 0 0; font-size:12px; color:var(--color-neutral-600);">{{ d.checkedBy }}</p>
+                  </div>
+                  <div>
+                    <h3 style="margin:0 0 4px; font-size:17.5px; line-height:1.28;">{{ d.title }}</h3>
+                    <p style="margin:0; font-size:14.5px; line-height:1.58; color:var(--color-neutral-800); max-width:62ch;">{{ d.detail }}</p>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="margin:0 0 40px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">Not yours to carry</h2>
+            <p style="margin:0 0 16px; font-size:13.5px; color:var(--color-neutral-700); max-width:58ch;">The most common source of confusion is the work next to yours. These belong to someone else.</p>
+            <ul style="margin:0; padding-left:1.1em; font-size:15px; line-height:1.7; max-width:62ch;">
+              <sc-for list="{{ notYours }}" as="n" hint-placeholder-count="3">
+                <li style="margin:0 0 5px;">{{ n.text }}</li>
+              </sc-for>
+            </ul>
+          </section>
+
+          <section style="margin:0 0 8px;">
+            <h2 style="margin:0 0 16px; font-size:{{ h2 }};">When something is above your line</h2>
+            <div style="display:flex; flex-direction:column;">
+              <sc-for list="{{ escalation }}" as="e" hint-placeholder-count="3">
+                <div style="display:grid; grid-template-columns:34px 1fr; gap:14px; padding:14px 0; border-top:1px solid var(--color-neutral-300);">
+                  <p style="margin:0; font-size:20px; color:var(--color-accent);">{{ e.step }}</p>
+                  <div>
+                    <p style="margin:0 0 2px; font-size:16.5px; line-height:1.3;">{{ e.who }}</p>
+                    <p style="margin:0; font-size:13.5px; line-height:1.5; color:var(--color-neutral-700); max-width:58ch;">{{ e.when }}</p>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isRights }}" hint-placeholder-val="{{ false }}">
+          <section style="margin:0 0 34px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 22px;">
+              <sc-for list="{{ rightFilters }}" as="f" hint-placeholder-count="4">
+                <button onClick="{{ f.select }}" style="{{ f.css }}">{{ f.label }}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+              <sc-for list="{{ rights }}" as="r" hint-placeholder-count="5">
+                <article style="display:grid; grid-template-columns:{{ rightCols }}; gap:8px 26px; padding:22px 0; border-top:1px solid var(--color-neutral-300);">
+                  <div>
+                    <p style="margin:0 0 6px; font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:{{ r.originColor }};">{{ r.origin }}</p>
+                    <p style="margin:0; font-size:14.5px; line-height:1.35;">{{ r.verdict }}</p>
+                    <p style="margin:3px 0 0; font-size:12.5px; line-height:1.45; color:var(--color-neutral-600);">{{ r.verdictNote }}</p>
+                  </div>
+                  <div>
+                    <h3 style="margin:0 0 5px; font-size:18px; line-height:1.28;">{{ r.title }}</h3>
+                    <p style="margin:0 0 10px; font-size:14.5px; line-height:1.58; max-width:62ch;">{{ r.what }}</p>
+                    <p style="margin:0 0 12px; font-size:13.5px; line-height:1.55; color:var(--color-neutral-700); max-width:62ch;"><span style="color:var(--color-neutral-600);">To claim it — </span>{{ r.howToClaim }}</p>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px 14px; align-items:baseline; font-size:13.5px;">
+                      <a href="#guide">Step-by-step guide</a>
+                      <span style="color:var(--color-neutral-400);">·</span>
+                      <a href="#source" style="color:{{ r.originColor }};">{{ r.sourceLabel }} ↗</a>
+                      <span style="font-size:11.5px; color:var(--color-neutral-600);">{{ r.verified }}</span>
+                    </div>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+            <p style="margin:22px 0 0; font-size:12.5px; line-height:1.6; font-style:italic; color:var(--color-neutral-700); max-width:64ch;">These are plain-language summaries of what the company's documents and the linked authorities say — not legal advice, and not a statement of what you are owed. The linked source governs. {{ hrName }} can help you read any of it.</p>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isTime }}" hint-placeholder-val="{{ false }}">
+          <section style="margin:0 0 38px;">
+            <div style="display:grid; grid-template-columns:{{ gridCols }}; gap:26px 30px;">
+              <sc-for list="{{ timeStats }}" as="s" hint-placeholder-count="4">
+                <div>
+                  <p style="margin:0 0 4px; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">{{ s.label }}</p>
+                  <p style="margin:0 0 3px; font-size:27px; line-height:1.1;">{{ s.value }}</p>
+                  <p style="margin:0; font-size:12.5px; line-height:1.5; color:var(--color-neutral-700); max-width:34ch;">{{ s.note }}</p>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="margin:0 0 38px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">How your time off builds up</h2>
+            <p style="margin:0 0 18px; font-size:13.5px; color:var(--color-neutral-700); max-width:58ch;">{{ accrualNote }}</p>
+            <div style="height:11px; background:var(--color-neutral-300); margin:0 0 8px; max-width:520px;">
+              <div style="height:11px; background:var(--color-accent); width:{{ accrualPct }};"></div>
+            </div>
+            <p style="margin:0 0 22px; font-size:12.5px; color:var(--color-neutral-700);">{{ accrualCaption }}</p>
+            <div style="display:flex; flex-direction:column;">
+              <sc-for list="{{ timeRules }}" as="t" hint-placeholder-count="5">
+                <article style="display:grid; grid-template-columns:{{ dutyCols }}; gap:4px 22px; padding:16px 0; border-top:1px solid var(--color-neutral-300);">
+                  <p style="margin:0; font-size:12px; letter-spacing:0.09em; text-transform:uppercase; color:{{ t.color }};">{{ t.origin }}</p>
+                  <div>
+                    <h3 style="margin:0 0 3px; font-size:17px; line-height:1.28;">{{ t.title }}</h3>
+                    <p style="margin:0; font-size:14.5px; line-height:1.58; color:var(--color-neutral-800); max-width:62ch;">{{ t.detail }}</p>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="margin:0 0 8px;">
+            <h2 style="margin:0 0 16px; font-size:{{ h2 }};">Booking time off, end to end</h2>
+            <div style="display:flex; flex-direction:column;">
+              <sc-for list="{{ ptoSteps }}" as="s" hint-placeholder-count="4">
+                <div style="display:grid; grid-template-columns:34px 1fr; gap:14px; padding:15px 0; border-top:1px solid var(--color-neutral-300);">
+                  <p style="margin:0; font-size:20px; color:{{ s.color }};">{{ s.n }}</p>
+                  <div>
+                    <p style="margin:0 0 2px; font-size:16.5px; line-height:1.3;">{{ s.title }}</p>
+                    <p style="margin:0 0 4px; font-size:13.5px; line-height:1.55; color:var(--color-neutral-700); max-width:60ch;">{{ s.detail }}</p>
+                    <p style="margin:0; font-size:12px; color:{{ s.color }};">{{ s.owner }}</p>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <p style="margin:18px 0 0; font-size:12.5px; color:var(--color-neutral-600); max-width:60ch;">You can tick these off for yourself. It tracks nothing, notifies no one, and submits nothing.</p>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isDocs }}" hint-placeholder-val="{{ false }}">
+          <section style="margin:0 0 38px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">Documents that apply to you</h2>
+            <p style="margin:0 0 26px; font-size:13.5px; color:var(--color-neutral-700); max-width:58ch;">Uploaded by your admin, filed under their headings, and routed to you by department, role and employee type. Where a heading carries a summary, an admin wrote or approved it — nothing here is written by the platform unread.</p>
+            <div style="display:flex; flex-direction:column; gap:34px;">
+              <sc-for list="{{ docGroups }}" as="g" hint-placeholder-count="3">
+                <div>
+                  <div style="display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline; margin:0 0 5px;">
+                    <h3 style="margin:0; font-size:19px; line-height:1.24;">{{ g.name }}</h3>
+                    <span style="font-size:11.5px; color:{{ g.reqColor }};">{{ g.req }}</span>
+                  </div>
+                  <p style="margin:0 0 4px; font-size:14.5px; line-height:1.6; max-width:60ch;">{{ g.summary }}</p>
+                  <p style="margin:0 0 6px; font-size:11.5px; color:var(--color-neutral-600);">{{ g.byline }}</p>
+                  <div style="display:flex; flex-direction:column;">
+                    <sc-for list="{{ g.items }}" as="d" hint-placeholder-count="2">
+                      <article style="padding:18px 0; border-top:1px solid var(--color-neutral-300);">
+                        <div style="display:flex; flex-wrap:wrap; gap:6px 10px; align-items:baseline; margin:0 0 6px;">
+                          <span style="font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--color-neutral-600);">{{ d.kicker }}</span>
+                          <span style="font-size:11.5px; color:{{ d.statusColor }};">{{ d.status }}</span>
+                        </div>
+                        <h4 style="margin:0 0 6px; font-size:17px; line-height:1.28; font-weight:600;">{{ d.title }}</h4>
+                        <p style="margin:0 0 10px; font-size:14.5px; line-height:1.6; max-width:62ch;">{{ d.summary }}</p>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px 14px; align-items:baseline; font-size:13.5px;">
+                          <a href="#read">Read the summary</a>
+                          <span style="color:var(--color-neutral-400);">·</span>
+                          <a href="#file">{{ d.file }}</a>
+                          <span style="font-size:11.5px; color:var(--color-neutral-600);">routed to {{ d.routedTo }}</span>
+                        </div>
+                      </article>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="margin:0 0 8px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">Who to ask</h2>
+            <p style="margin:0 0 20px; font-size:13.5px; line-height:1.55; color:var(--color-neutral-700); max-width:58ch;">Resolved from your department and site. Never a dead end.</p>
+            <div style="display:grid; grid-template-columns:{{ gridCols }}; gap:22px 26px;">
+              <sc-for list="{{ contacts }}" as="c" hint-placeholder-count="3">
+                <div>
+                  <p style="margin:0 0 3px; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">{{ c.purpose }}</p>
+                  <p style="margin:0 0 1px; font-size:17px;">{{ c.name }}</p>
+                  <p style="margin:0 0 9px; font-size:13px; color:var(--color-neutral-700);">{{ c.title }}</p>
+                  <div style="display:flex; flex-direction:column; gap:3px; font-size:13.5px;">
+                    <a href="#mail">{{ c.email }}</a>
+                    <a href="#tel">{{ c.phone }}</a>
+                  </div>
+                  <p style="margin:9px 0 0; font-size:12px; line-height:1.5; color:var(--color-neutral-600); max-width:38ch;">{{ c.about }}</p>
+                  <sc-if value="{{ c.inOrg }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ c.seeInOrg }}" style="margin:7px 0 0; font-size:12.5px; background:none; border:none; padding:0; cursor:pointer; color:var(--color-accent-700); text-decoration:underline;">Find them in the org chart</button>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isOrg }}" hint-placeholder-val="{{ false }}">
+          <section style="margin:0 0 34px;">
+            <p style="margin:0 0 14px; font-size:12.5px; color:var(--color-neutral-600);">{{ orgCount }}</p>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+              <input value="{{ orgQuery }}" onChange="{{ setOrgQuery }}" placeholder="{{ orgPlaceholder }}" style="flex:1 1 220px; min-width:0; font-size:14.5px; padding:10px 12px; border:1px solid var(--color-neutral-400); background:var(--color-bg); color:var(--color-text); border-radius:2px;" />
+              <button onClick="{{ jumpToMe }}" style="font-size:12.5px; padding:8px 13px; border:1px solid var(--color-neutral-400); background:transparent; color:var(--color-neutral-700); cursor:pointer; border-radius:2px;">Back to me</button>
+              <button onClick="{{ jumpToTop }}" style="font-size:12.5px; padding:8px 13px; border:1px solid var(--color-neutral-400); background:transparent; color:var(--color-neutral-700); cursor:pointer; border-radius:2px;">Top of the company</button>
+            </div>
+          </section>
+
+          <sc-if value="{{ orgSearching }}" hint-placeholder-val="{{ false }}">
+            <section style="margin:0 0 38px;">
+              <h2 style="margin:0 0 16px; font-size:{{ h2 }};">Matches</h2>
+              <div style="display:flex; flex-direction:column;">
+                <sc-for list="{{ orgMatches }}" as="m" hint-placeholder-count="4">
+                  <button onClick="{{ m.select }}" style="text-align:left; background:none; border:none; border-top:1px solid var(--color-neutral-300); padding:13px 0; cursor:pointer;">
+                    <span style="display:block; font-size:17px; line-height:1.3; color:{{ m.flagColor }};">{{ m.label }} <span style="font-size:11.5px;">{{ m.flagLabel }}</span></span>
+                    <span style="display:block; font-size:13.5px; color:var(--color-neutral-700);">{{ m.meta }}</span>
+                    <span style="display:block; font-size:12px; color:var(--color-neutral-600);">{{ m.sub }}</span>
+                  </button>
+                </sc-for>
+                <sc-if value="{{ noOrgMatches }}" hint-placeholder-val="{{ false }}">
+                  <p style="margin:0; font-size:13.5px; font-style:italic; color:var(--color-neutral-600);">Nobody by that name, title, department or site. Everyone in the company is searchable here, so a blank result means the record does not exist yet.</p>
+                </sc-if>
+              </div>
+            </section>
+          </sc-if>
+
+          <section style="margin:0 0 40px;">
+            <sc-if value="{{ hasChain }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; margin:0 0 18px;">
+                <sc-for list="{{ chain }}" as="c" hint-placeholder-count="3">
+                  <button onClick="{{ c.select }}" style="background:none; border:none; padding:0; cursor:pointer; font-size:13px; color:var(--color-accent-700); text-decoration:underline;">{{ c.label }}</button>
+                  <span style="font-size:12px; color:var(--color-neutral-400);">›</span>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <p style="margin:0 0 5px; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:{{ focusFlagColor }};">{{ focusFlag }}</p>
+            <h2 style="margin:0 0 4px; font-size:{{ h1 }}; line-height:1.06; letter-spacing:-0.015em;">{{ focusName }}</h2>
+            <p style="margin:0 0 2px; font-size:17px; line-height:1.35;">{{ focusTitle }}</p>
+            <p style="margin:0 0 3px; font-size:14px; color:var(--color-neutral-700);">{{ focusDept }}</p>
+            <p style="margin:0 0 14px; font-size:13px; color:var(--color-neutral-600);">{{ focusLine }}</p>
+
+            <sc-if value="{{ hasFocusContact }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; flex-wrap:wrap; gap:6px 16px; font-size:14px; margin:0 0 14px;">
+                <a href="{{ focusMailto }}">{{ focusEmail }}</a>
+                <a href="{{ focusTel }}">{{ focusPhone }}</a>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noFocusContact2 }}" hint-placeholder-val="{{ false }}">
+              <p style="margin:0 0 14px; font-size:13px; line-height:1.55; color:var(--color-neutral-600); max-width:52ch; font-style:italic;">{{ focusNoContact }}</p>
+            </sc-if>
+
+            <sc-if value="{{ hasFocusDotted }}" hint-placeholder-val="{{ false }}">
+              <p style="margin:0 0 14px; font-size:13px; color:var(--color-neutral-700);">Also reports, dotted line, to <button onClick="{{ focusDottedSelect }}" style="background:none; border:none; padding:0; cursor:pointer; font-size:13px; color:var(--color-accent-700); text-decoration:underline;">{{ focusDotted }}</button></p>
+            </sc-if>
+            <sc-if value="{{ hasDottedInbound }}" hint-placeholder-val="{{ false }}">
+              <div style="margin:0 0 14px;">
+                <p style="margin:0 0 4px; font-size:11.5px; color:var(--color-neutral-600);">Dotted line into this role</p>
+                <div style="display:flex; flex-wrap:wrap; gap:4px 14px;">
+                  <sc-for list="{{ dottedInbound }}" as="d" hint-placeholder-count="1">
+                    <button onClick="{{ d.select }}" style="background:none; border:none; padding:0; cursor:pointer; font-size:13.5px; color:var(--color-accent-700); text-decoration:underline;">{{ d.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ hasReports }}" hint-placeholder-val="{{ true }}">
+              <div style="margin:22px 0 0;">
+                <p style="margin:0 0 8px; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">{{ reportsLabel }}</p>
+                <div style="display:flex; flex-direction:column;">
+                  <sc-for list="{{ reports }}" as="r" hint-placeholder-count="3">
+                    <button onClick="{{ r.select }}" style="text-align:left; background:none; border:none; border-top:1px solid var(--color-neutral-300); padding:12px 0; cursor:pointer;">
+                      <span style="display:block; font-size:16.5px; line-height:1.3; color:{{ r.flagColor }};">{{ r.label }} <span style="font-size:11.5px;">{{ r.flagLabel }}</span></span>
+                      <span style="display:block; font-size:13px; color:var(--color-neutral-700);">{{ r.title }}</span>
+                      <span style="display:block; font-size:12px; color:var(--color-neutral-600);">{{ r.sub }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="margin:26px 0 0;">
+              <p style="margin:0 0 8px; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600);">{{ peersLabel }}</p>
+              <div style="display:flex; flex-direction:column;">
+                <sc-for list="{{ peers }}" as="r" hint-placeholder-count="3">
+                  <button onClick="{{ r.select }}" style="text-align:left; background:none; border:none; border-top:1px solid var(--color-neutral-300); padding:12px 0; cursor:pointer;">
+                    <span style="display:block; font-size:16.5px; line-height:1.3; color:{{ r.flagColor }};">{{ r.label }} <span style="font-size:11.5px;">{{ r.flagLabel }}</span></span>
+                    <span style="display:block; font-size:13px; color:var(--color-neutral-700);">{{ r.title }}</span>
+                    <span style="display:block; font-size:12px; color:var(--color-neutral-600);">{{ r.sub }}</span>
+                  </button>
+                </sc-for>
+                <sc-if value="{{ noPeersFlag }}" hint-placeholder-val="{{ false }}">
+                  <p style="margin:0; font-size:13.5px; font-style:italic; color:var(--color-neutral-600);">{{ noPeers }}</p>
+                </sc-if>
+              </div>
+            </div>
+          </section>
+
+          <section style="margin:0 0 8px;">
+            <h2 style="margin:0 0 6px; font-size:{{ h2 }};">The whole company</h2>
+            <p style="margin:0 0 18px; font-size:13.5px; line-height:1.55; color:var(--color-neutral-700); max-width:58ch;">Every person and every opening, indented by reporting line. Tap a name to move the view onto them.</p>
+            <div style="display:flex; flex-direction:column; gap:1px;">
+              <sc-for list="{{ orgOutline }}" as="o" hint-placeholder-count="12">
+                <button onClick="{{ o.select }}" style="text-align:left; background:none; border:none; padding:7px 0 7px {{ o.indent }}; cursor:pointer;">
+                  <span style="display:block; font-size:15px; line-height:1.3; color:{{ o.nameColor }};">{{ o.label }} <span style="font-size:11px; color:{{ o.flagColor }};">{{ o.flagLabel }}</span></span>
+                  <span style="display:block; font-size:12.5px; color:var(--color-neutral-600);">{{ o.title }} · {{ o.site }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <p style="margin:22px 0 0; font-size:12.5px; line-height:1.6; color:var(--color-neutral-700); max-width:60ch; font-style:italic;">{{ orgFooter }}</p>
+          </section>
+        </sc-if>
+
+      </div>
+
+      <div style="border-top:1px solid var(--color-neutral-300); padding:14px 22px; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; justify-content:space-between;">
+        <p style="margin:0; font-size:12px; color:var(--color-neutral-600); max-width:60ch;">This handbook explains and directs. It files nothing on your behalf — anything external is filed by you, with the agency or administrator named on the card.</p>
+        <div style="display:flex; gap:14px; font-size:13px;">
+          <a href="#report">Report something out of date</a>
+          <a href="#print">Print this page</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1120,&quot;height&quot;:900}}">
+const CY = 'var(--color-accent-700)';
+const MG = 'var(--color-accent-2-700)';
+const NT = 'var(--color-neutral-700)';
+
+const P = {
+  tech: {
+    label: 'Tech · Engineer',
+    company: 'Northwind Systems',
+    industry: 'Software · 1,400 employees',
+    name: 'Ravi',
+    role: 'Software Engineer II',
+    dept: 'Platform Engineering',
+    type: 'Full-time, salaried, exempt',
+    place: 'Austin, Texas, United States',
+    state: 'Texas',
+    country: 'United States',
+    tenure: 'Month 8',
+    hr: 'Dana in People Ops',
+    stats: [
+      { label: 'PTO available now', value: '11.5 days', note: 'Unlimited-in-name plans still track a floor. Yours accrues at 1.67 days a month.' },
+      { label: 'Working hours', value: '40 / week', note: 'Exempt: no overtime, core hours 10am–4pm Central, the rest is yours.' },
+      { label: 'Eligible for', value: '9 of 11', note: 'Two benefits are still tenure-locked. Dates on the Rights tab.' },
+      { label: 'Outstanding', value: '1 policy', note: 'Acceptable use, version 7, published nine days ago.' }
+    ],
+    duties: [
+      { cadence: 'Every sprint', checkedBy: 'Checked by your tech lead', title: 'Ship and support your own services', detail: 'You own what you merge through to production, including the pager for it. Two on-call weeks a quarter, published a month ahead.' },
+      { cadence: 'Every change', checkedBy: 'Checked in review', title: 'Security review before merge', detail: 'Anything touching customer data needs a second reviewer from the security guild. This is a company rule, not a suggestion.' },
+      { cadence: 'Weekly', checkedBy: 'Checked by your tech lead', title: 'Keep your work visible', detail: 'Status in the tracker by Friday. Nobody chases; nobody guesses either.' },
+      { cadence: 'Annually', checkedBy: 'Checked by People Ops', title: 'Security and privacy training', detail: 'Required of every engineer with production access. Non-completion suspends that access.' },
+      { cadence: 'As it happens', checkedBy: 'Checked by security', title: 'Report an incident in the hour', detail: 'Suspected exposure of customer data goes to the security channel immediately. Reporting fast is never penalised.' }
+    ],
+    notYours: [
+      'Approving your own production access changes — that is your tech lead and security, jointly.',
+      'Vendor contracts or tool purchases, at any amount. Ask your manager to raise it.',
+      'Interpreting a customer contract. Legal reads contracts; you read the ticket.',
+      'Hiring decisions. You interview and write feedback; the panel decides.'
+    ],
+    escalation: [
+      { step: '1', who: 'Priya Raman — your tech lead', when: 'Anything about the work, the on-call load, or a decision you disagree with.' },
+      { step: '2', who: 'Marcus Bell — Director, Platform', when: 'If it is unresolved after a week, or it is about your lead.' },
+      { step: '3', who: 'Dana Okafor — People Ops', when: 'Anything about conduct, pay, leave, or a policy. You can start here; you do not have to go in order.' }
+    ],
+    rights: [
+      { origin: 'Company policy', color: CY, title: 'Paid parental leave — 16 weeks', verdict: 'Eligible now', verdictNote: 'Full-time, past the 6-month mark.', what: 'Sixteen weeks at full pay for any new parent, birth or adoption, taken in up to two blocks in the first year.', howToClaim: 'Tell your manager, then open a leave case with People Ops at least 30 days ahead where you can.', sourceLabel: 'Parental leave policy v3', verified: 'reviewed 12 August' },
+      { origin: 'Company policy', color: CY, title: 'Learning budget — $2,500 a year', verdict: 'Eligible now', verdictNote: 'Resets 1 January, does not roll over.', what: 'Conferences, courses and books that relate to your role. Your manager approves the spend, not the choice.', howToClaim: 'Raise it with your manager, then submit through the expense tool.', sourceLabel: 'Learning policy v2', verified: 'reviewed 1 August' },
+      { origin: 'Company policy', color: CY, title: 'Retirement plan match — 4%', verdict: 'Eligible on 1 April', verdictNote: 'First of the month after 12 months. 7 months to go.', what: 'The company matches the first 4% you contribute, vesting immediately.', howToClaim: 'Enrol with the plan administrator once the window opens. The company does not enrol you.', sourceLabel: 'Plan administrator', verified: 'link verified 4 August' },
+      { origin: 'Federal · United States', color: MG, title: 'Job-protected family and medical leave', verdict: 'Eligible now', verdictNote: '12 months of service and 1,250 hours met.', what: 'Up to 12 weeks of unpaid, job-protected leave a year for your own serious health condition, a family member, or a new child. Company paid leave can run alongside it.', howToClaim: 'Talk to People Ops first — they run the internal side. The federal notice explains your side.', sourceLabel: 'dol.gov', verified: 'link verified 1 August' },
+      { origin: 'Texas · state', color: MG, title: 'No state income tax withholding', verdict: 'Applies to you', verdictNote: 'Based on your recorded work state.', what: 'Texas levies no personal income tax, so your withholding is federal only. Your paystub shows no state line.', howToClaim: 'Nothing to claim. Change your federal withholding with a new W-4 through payroll.', sourceLabel: 'comptroller.texas.gov', verified: 'link verified 12 August' },
+      { origin: 'Texas · state', color: MG, title: 'Workers compensation, if injured at work', verdict: 'Applies to you', verdictNote: 'Texas is a non-subscriber state; the company does carry coverage.', what: 'Medical care and wage replacement for a work-related injury. Report it to the company first, then file with the state.', howToClaim: 'Report the injury the same day to your manager and People Ops, then file the state claim yourself.', sourceLabel: 'tdi.texas.gov', verified: 'link verified 12 August' }
+    ],
+    time: {
+      stats: [
+        { label: 'Accrued and unused', value: '11.5 days', note: 'As of today. Accrual posts on the last day of each month.' },
+        { label: 'Booked ahead', value: '4 days', note: 'Two in November, two in December. Approved.' },
+        { label: 'Sick days', value: '8 remaining', note: 'Separate from PTO. Resets 1 January, does not roll over.' },
+        { label: 'Carryover cap', value: '5 days', note: 'Anything over 5 days on 31 December is lost. Book it.' }
+      ],
+      accrualNote: '1.67 days a month, from your first full month. No waiting period for accrual; a 90-day wait before you can take it, which you passed in May.',
+      accrualPct: '58%',
+      accrualCaption: '11.5 of a 20-day annual entitlement accrued, 58% through the year.',
+      rules: [
+        { origin: 'Company', color: CY, title: 'Notice for planned time off', detail: 'Two weeks for anything over three days; a day for a single day. Blackout on the two weeks around a major release, published a quarter ahead.' },
+        { origin: 'Company', color: CY, title: 'Core hours', detail: '10am to 4pm Central. Outside that, work when you work. Meetings outside core hours are opt-in.' },
+        { origin: 'Federal', color: MG, title: 'Overtime does not apply to you', detail: 'Your role is classified exempt, so hours over 40 are not paid at a premium. If your duties change, so does the classification — ask People Ops to re-check.' },
+        { origin: 'Texas · state', color: MG, title: 'Breaks are not state-mandated', detail: 'Texas sets no meal or rest break requirement for adults. The company standard is a 30-minute unpaid meal break on any day over six hours.' },
+        { origin: 'Company', color: CY, title: 'Company holidays', detail: 'Eleven fixed days plus two floating days you choose. Floating days do not carry over.' }
+      ],
+      steps: [
+        { n: '1', color: CY, title: 'Check your balance here', detail: 'The number above is authoritative for accrual. Bookings are in the HR system.', owner: 'You · inside the company' },
+        { n: '2', color: CY, title: 'Tell your manager', detail: 'A message is enough. Two weeks ahead for more than three days.', owner: 'You and your manager · inside the company' },
+        { n: '3', color: CY, title: 'File the request in the HR system', detail: 'This platform does not book time off. The request has to be entered there.', owner: 'You · in the HR system' },
+        { n: '4', color: MG, title: 'For leave over two weeks, open a leave case', detail: 'Longer leave may involve federal job protection and a state programme. People Ops walks you through which applies.', owner: 'People Ops, then possibly a state agency ↗' }
+      ]
+    },
+    docs: [
+      { kicker: 'Policy · all employees', status: 'Acknowledgment outstanding', statusColor: MG, title: 'Acceptable use of company systems, v7', summary: 'What you may and may not do on company hardware and accounts. Version 7 adds rules for AI coding tools and for personal devices on the office network.', file: 'acceptable-use-v7.pdf', routedTo: 'all employees' },
+      { kicker: 'Playbook · Platform Engineering', status: 'Acknowledged 4 August', statusColor: CY, title: 'On-call handbook', summary: 'Rotation, escalation, what counts as a page, and what you are owed for a night that goes badly. Written by your own department.', file: 'oncall-handbook.docx', routedTo: 'Platform Engineering' },
+      { kicker: 'Benefits · full-time', status: 'For reference', statusColor: NT, title: 'Medical plan summary, 2027 plan year', summary: 'Two plan options side by side, with the deductible, the out-of-pocket maximum and what the company pays. The carrier document governs.', file: 'medical-summary-2027.pdf', routedTo: 'full-time employees' },
+      { kicker: 'Individual · you', status: 'Private to you', statusColor: CY, title: 'Your offer letter and equity grant', summary: 'Uploaded to your record by People Ops. Visible only to you and to the two admins who can see individual documents.', file: 'offer-ravi.pdf', routedTo: 'you only' }
+    ],
+    contacts: [
+      { purpose: 'People Ops, your site', name: 'Dana Okafor', title: 'People Ops partner · Austin', email: 'd.okafor@northwind.example', phone: '(512) 555-0143 ext. 12', about: 'Pay, leave, benefits, conduct. Replies within one business day.' },
+      { purpose: 'Your manager, from the org chart', name: 'Priya Raman', title: 'Tech lead · Platform', email: 'p.raman@northwind.example', phone: '(512) 555-0188', about: 'The work, on-call, and anything you want a second opinion on.' },
+      { purpose: 'IT support', name: 'Service desk', title: 'Northwind IT', email: 'help@northwind.example', phone: '(512) 555-0100', about: 'Accounts, hardware, access. 24/5, plus on-call at weekends.' }
+    ]
+  },
+
+  health: {
+    label: 'Healthcare · Nurse',
+    company: 'Ridgeline Care Group',
+    industry: 'Healthcare · 3,100 employees',
+    name: 'Marisol',
+    role: 'Registered Nurse, 4 West',
+    dept: 'Clinical Operations',
+    type: 'Per-diem, hourly, non-exempt',
+    place: 'Hackensack, New Jersey, United States',
+    state: 'New Jersey',
+    country: 'United States',
+    tenure: 'Day 12',
+    hr: 'Dara in the people team',
+    stats: [
+      { label: 'PTO available now', value: '0 days', note: 'Per-diem accrues sick time by law, not vacation. The state rule is on the Time tab.' },
+      { label: 'Working hours', value: 'By shift', note: 'Non-exempt: overtime past 40 hours in a week, at time and a half.' },
+      { label: 'Eligible for', value: '3 of 9', note: 'Insurance and the retirement plan unlock on tenure. Dates on the Rights tab.' },
+      { label: 'Outstanding', value: '2 policies', note: 'Privacy v4 and timekeeping v2, both due within two weeks of your first shift.' }
+    ],
+    duties: [
+      { cadence: 'Every shift', checkedBy: 'Checked by your charge nurse', title: 'Chart at the point of care', detail: 'Document as you go, not at the end. A late chart is a patient-safety issue before it is a paperwork issue.' },
+      { cadence: 'Every shift', checkedBy: 'Checked by your charge nurse', title: 'Hand over face to face', detail: 'Verbal handover plus the written summary, every time, including when you pick up mid-shift.' },
+      { cadence: 'As it happens', checkedBy: 'Checked by the privacy office', title: 'Report a privacy or safety concern the same day', detail: 'Suspected disclosure, near miss, or equipment fault. Same shift, to your charge nurse and the log.' },
+      { cadence: 'Annually', checkedBy: 'Checked by Clinical Education', title: 'Competencies and licensure', detail: 'You keep your own licence current. The company tracks the expiry date and will remind you twice.' },
+      { cadence: 'Every shift', checkedBy: 'Checked by the punch record', title: 'Clock in and out at the unit terminal', detail: 'Including partial pick-ups. Differentials are paid from the punch, not from the schedule.' }
+    ],
+    notYours: [
+      'Deciding staffing ratios for the unit — that is the nurse manager and the house supervisor.',
+      'Speaking to a family about a clinical outcome beyond your own care. Escalate to the attending.',
+      'Filing your own workers compensation claim without reporting internally first — report first, then file.',
+      'Approving overtime. You can be asked; you cannot self-authorise.'
+    ],
+    escalation: [
+      { step: '1', who: 'Charge nurse on shift', when: 'Anything happening now: staffing, a patient, equipment, a break you cannot take.' },
+      { step: '2', who: 'Ana Petrov — Nurse manager, 4 West', when: 'Scheduling, pick-ups, repeated problems, anything about your charge nurse.' },
+      { step: '3', who: 'House supervisor, overnight', when: 'After hours, when the manager is not on site and it cannot wait.' },
+      { step: '4', who: 'Dara Whitfield — People team', when: 'Pay, leave, conduct, or a policy. You can start here.' }
+    ],
+    rights: [
+      { origin: 'New Jersey · state', color: MG, title: 'Earned sick leave — up to 40 hours a year', verdict: 'Applies to you', verdictNote: 'Per-diem included. Accrues from day one.', what: 'One hour of paid sick time for every 30 hours worked, up to 40 hours a year, usable for your own illness or a family member.', howToClaim: 'Tell your charge nurse as early as you can, then log it in the HR system. No note needed under three consecutive days.', sourceLabel: 'nj.gov', verified: 'link verified 12 August' },
+      { origin: 'New Jersey · state', color: MG, title: 'Temporary disability and family leave insurance', verdict: 'Applies to you', verdictNote: 'You contribute through payroll already.', what: 'State-paid wage replacement when you cannot work because of your own condition, or to bond with a new child or care for a family member.', howToClaim: 'You file with the state, not with Ridgeline. Read our guide first — it lists what to have ready.', sourceLabel: 'nj.gov', verified: 'link verified 12 August' },
+      { origin: 'Company policy', color: CY, title: 'Shift differentials', verdict: 'Eligible now', verdictNote: 'From your first shift.', what: 'Night, weekend and holiday differentials, applied automatically from the punch record.', howToClaim: 'Nothing to claim. Check the punch, not the schedule, if a differential looks wrong.', sourceLabel: 'Timekeeping policy v2', verified: 'reviewed 1 August' },
+      { origin: 'Company policy', color: CY, title: 'Health, dental and vision', verdict: 'Eligible on 1 November', verdictNote: 'First of the month after 60 days. 61 days to go.', what: 'Two plan options for per-diem staff averaging 20+ hours. A 30-day enrolment window opens on the same date.', howToClaim: 'Enrol with the carrier during the window. Missing it means waiting for open enrolment.', sourceLabel: 'Benefits guide 2027', verified: 'reviewed 4 August' },
+      { origin: 'Company policy', color: CY, title: 'Retirement plan', verdict: 'Eligible on 1 October', verdictNote: 'First of the month after 30 days. 30 days to go.', what: 'You may contribute from the eligibility date. The match begins at 12 months.', howToClaim: 'Enrol with the plan administrator. The company does not enrol you.', sourceLabel: 'Plan administrator', verified: 'link verified 4 August' },
+      { origin: 'Federal · United States', color: MG, title: 'Overtime at time and a half', verdict: 'Applies to you', verdictNote: 'Non-exempt, hourly.', what: 'Every hour over 40 in a week is paid at one and a half times your rate. This cannot be waived by agreement.', howToClaim: 'Nothing to claim; it is automatic from the punch record. Raise a discrepancy with payroll within the pay period.', sourceLabel: 'dol.gov', verified: 'link verified 1 August' }
+    ],
+    time: {
+      stats: [
+        { label: 'Sick time accrued', value: '4 hours', note: '1 hour per 30 worked, from day one, up to 40 hours a year.' },
+        { label: 'Hours this week', value: '24', note: 'Three 8-hour shifts. Overtime starts past 40.' },
+        { label: 'Vacation accrual', value: 'Not applicable', note: 'Per-diem does not accrue vacation. It changes if you move to part-time.' },
+        { label: 'Outstanding', value: '2 policies', note: 'Due within two weeks of your first shift.' }
+      ],
+      accrualNote: 'Per-diem staff accrue paid sick time under New Jersey law from the first hour worked. Vacation accrual starts only if you move to a part-time or full-time line.',
+      accrualPct: '10%',
+      accrualCaption: '4 of 40 hours of annual sick time accrued.',
+      rules: [
+        { origin: 'New Jersey · state', color: MG, title: 'Meal break on a shift over six hours', detail: 'New Jersey mandates breaks for minors; for adults the company standard applies — a 30-minute unpaid meal break, coverage arranged by the charge nurse. If you cannot take it, log it: an untaken break is paid time.' },
+        { origin: 'Federal', color: MG, title: 'Overtime past 40 hours in a week', detail: 'Time and a half, from the punch record. Picking up a fourth shift can put you over — check before you accept if you do not want it.' },
+        { origin: 'Company', color: CY, title: 'Shift pick-up and cancellation', detail: 'Open shifts post 14 days ahead. Cancelling inside 48 hours needs the nurse manager, twice in a quarter triggers a conversation.' },
+        { origin: 'Company', color: CY, title: 'Missed punch correction', detail: 'Correct it before the Monday after the pay period closes. After that it becomes a payroll adjustment and takes a cycle.' },
+        { origin: 'Company', color: CY, title: 'Holiday differential', detail: 'Six recognised holidays at a premium rate. The list is in the timekeeping policy.' }
+      ],
+      steps: [
+        { n: '1', color: CY, title: 'Check your accrued sick hours here', detail: 'The number above is your state-accrued balance.', owner: 'You · inside the company' },
+        { n: '2', color: CY, title: 'Tell your charge nurse as early as you can', detail: 'For sick time, as soon as you know. For a planned day, before the schedule posts.', owner: 'You and your charge nurse · inside the company' },
+        { n: '3', color: CY, title: 'Log it in the HR system', detail: 'This platform does not record time off. The HR system does.', owner: 'You · in the HR system' },
+        { n: '4', color: MG, title: 'For anything over a week, ask about state leave insurance', detail: 'New Jersey pays wage replacement for longer absences. That claim is filed by you, with the state.', owner: 'People team, then the state agency ↗' }
+      ]
+    },
+    docs: [
+      { kicker: 'Policy · clinical staff', status: 'Acknowledgment outstanding', statusColor: MG, title: 'Patient privacy and information handling, v4', summary: 'Look at a record only when caring for that patient. Version 4 adds hallway and elevator conversations explicitly. Report a suspected disclosure the same day.', file: 'privacy-v4.pdf', routedTo: 'anyone with charting access' },
+      { kicker: 'Policy · all employees', status: 'Acknowledgment outstanding', statusColor: MG, title: 'Timekeeping and shift differentials, v2', summary: 'Clock in at the unit terminal for every shift. Differentials come from the punch record. A missed punch can be fixed until the Monday after the period closes.', file: 'timekeeping-v2.docx', routedTo: 'all employees' },
+      { kicker: 'Playbook · Clinical Operations', status: 'For reference', statusColor: NT, title: 'Unit orientation, 4 West', summary: 'Layout, supply rooms, escalation after hours, and the twelve acronyms used on the floor. Written by your own department.', file: 'orientation-4west.docx', routedTo: 'Clinical Operations · 4 West' },
+      { kicker: 'Individual · you', status: 'Private to you', statusColor: CY, title: 'Your licence and competency record', summary: 'Uploaded from your credentialing file. Expiry dates tracked, with two reminders before each one.', file: 'credentials-marisol.pdf', routedTo: 'you only' }
+    ],
+    contacts: [
+      { purpose: 'People team, your site', name: 'Dara Whitfield', title: 'HR generalist · Ridgeline Bergen', email: 'd.whitfield@ridgeline.example', phone: '(201) 555-0134 ext. 218', about: 'Pay, benefits eligibility, leave paperwork. 8am–4pm Eastern.' },
+      { purpose: 'Your manager, from the org chart', name: 'Ana Petrov', title: 'Nurse manager · 4 West', email: 'a.petrov@ridgeline.example', phone: '(201) 555-0189', about: 'Scheduling, pick-ups, anything on the unit.' },
+      { purpose: 'Overnight escalation', name: 'House supervisor', title: 'On site 7pm–7am', email: 'nights@ridgeline.example', phone: '(201) 555-0190', about: 'When it cannot wait and the manager is off site.' }
+    ]
+  },
+
+  gov: {
+    label: 'Government · Caseworker',
+    company: 'Cascade County',
+    industry: 'Public sector · 900 employees',
+    name: 'Alan',
+    role: 'Benefits Caseworker II',
+    dept: 'Human Services',
+    type: 'Full-time, classified, union-represented',
+    place: 'Salem, Oregon, United States',
+    state: 'Oregon',
+    country: 'United States',
+    tenure: 'Year 4',
+    hr: 'Renata in Human Resources',
+    stats: [
+      { label: 'Vacation accrued', value: '18.5 days', note: 'Accrual steps up at year five, per the collective agreement.' },
+      { label: 'Working hours', value: '37.5 / week', note: 'Non-exempt: overtime and compensatory time both apply.' },
+      { label: 'Eligible for', value: '12 of 12', note: 'Everything in your classification is open to you.' },
+      { label: 'Outstanding', value: 'None', note: 'Your last acknowledgment was the ethics policy in June.' }
+    ],
+    duties: [
+      { cadence: 'Every case', checkedBy: 'Checked in supervisory review', title: 'Determine eligibility to the written standard', detail: 'Apply the rule as published, document the basis, and record the decision inside the statutory timeline.' },
+      { cadence: 'Every case', checkedBy: 'Checked by the privacy officer', title: 'Protect client information', detail: 'Access a record only for a case assigned to you. Access is logged and audited monthly.' },
+      { cadence: 'Monthly', checkedBy: 'Checked by your supervisor', title: 'Caseload review', detail: 'Bring aging cases to review before they age out. Escalate a case you cannot resolve rather than holding it.' },
+      { cadence: 'Annually', checkedBy: 'Checked by HR', title: 'Ethics and conflict-of-interest declaration', detail: 'Required of every classified employee. A conflict is not a problem; an undeclared one is.' }
+    ],
+    notYours: [
+      'Interpreting a statute where the rule is silent — that goes to program policy, in writing.',
+      'Granting an exception to a published standard. Only the program manager can, on the record.',
+      'Speaking to media or to an elected official about a case. Route to communications.',
+      'Deciding a grievance. Your union steward and HR handle that process.'
+    ],
+    escalation: [
+      { step: '1', who: 'Lena Cho — your supervisor', when: 'Caseload, a decision you are unsure of, a client escalation.' },
+      { step: '2', who: 'Program policy team', when: 'When the written rule does not answer the question. Ask in writing; the answer becomes precedent.' },
+      { step: '3', who: 'Your union steward', when: 'Anything about working conditions, discipline, or the collective agreement.' },
+      { step: '4', who: 'Renata Silva — Human Resources', when: 'Pay, leave, conduct, accommodation. You can start here.' }
+    ],
+    rights: [
+      { origin: 'Collective agreement', color: CY, title: 'Vacation accrual step-up at year five', verdict: 'Eligible on 3 March', verdictNote: 'Article 14. Six months to go.', what: 'Accrual rises from 15 to 20 days a year at five years of continuous service, and again at ten.', howToClaim: 'Automatic. Check the accrual line on your first March paystub and raise it with HR if it did not change.', sourceLabel: 'Collective agreement, art. 14', verified: 'reviewed 1 July' },
+      { origin: 'Oregon · state', color: MG, title: 'Paid family and medical leave', verdict: 'Applies to you', verdictNote: 'Contributions taken through payroll.', what: 'Up to 12 weeks of state-paid leave for a new child, a serious health condition, or safe leave. Job protection applies after 90 days with the employer.', howToClaim: 'You file with the state. The county runs the internal side — tell HR at the same time.', sourceLabel: 'oregon.gov', verified: 'link verified 12 August' },
+      { origin: 'Oregon · state', color: MG, title: 'Sick time — 40 hours a year, protected', verdict: 'Applies to you', verdictNote: 'Accrued and available.', what: 'Paid sick time for your own or a family member illness, and for certain public-health closures.', howToClaim: 'Notify your supervisor and log it. No documentation under three consecutive days.', sourceLabel: 'oregon.gov', verified: 'link verified 12 August' },
+      { origin: 'Federal · United States', color: MG, title: 'Job-protected family and medical leave', verdict: 'Applies to you', verdictNote: 'Service and hours thresholds met.', what: 'Twelve weeks of unpaid, job-protected leave a year. It can run at the same time as state paid leave and county paid leave.', howToClaim: 'Through HR. Which programme pays and which protects is exactly what they will explain.', sourceLabel: 'dol.gov', verified: 'link verified 1 August' },
+      { origin: 'Collective agreement', color: CY, title: 'Compensatory time instead of overtime pay', verdict: 'Eligible now', verdictNote: 'Your choice, per occurrence.', what: 'For approved overtime you may take time and a half in pay or in time off, banked up to 80 hours.', howToClaim: 'Elect it when you submit the overtime, not afterwards.', sourceLabel: 'Collective agreement, art. 9', verified: 'reviewed 1 July' },
+      { origin: 'Company policy', color: CY, title: 'Public service loan forgiveness — employment certification', verdict: 'Eligible now', verdictNote: 'Employer certification only; the programme is federal.', what: 'The county certifies your employment for the federal programme. It does not decide your eligibility.', howToClaim: 'Send the certification form to HR, then file with the federal servicer yourself.', sourceLabel: 'studentaid.gov', verified: 'link verified 12 August' }
+    ],
+    time: {
+      stats: [
+        { label: 'Vacation accrued', value: '18.5 days', note: 'Cap of 40 days. Above the cap, accrual stops.' },
+        { label: 'Sick accrued', value: '11 days', note: 'Rolls over without limit under the agreement.' },
+        { label: 'Comp time banked', value: '14 hours', note: 'Use or convert before the fiscal year closes.' },
+        { label: 'Working hours', value: '37.5 / week', note: '7.5-hour day, 30-minute unpaid meal, two paid 15s.' }
+      ],
+      accrualNote: 'Fifteen days a year until year five, then twenty. Accrual posts each pay period, per article 14 of the collective agreement.',
+      accrualPct: '46%',
+      accrualCaption: '18.5 days accrued against a 40-day cap.',
+      rules: [
+        { origin: 'Collective agreement', color: CY, title: 'Notice and seniority for vacation', detail: 'Requests over five days go in by 1 March for the summer period; conflicts are resolved by seniority, in writing.' },
+        { origin: 'Oregon · state', color: MG, title: 'Paid rest and meal breaks', detail: 'Oregon requires a 30-minute unpaid meal on a shift over six hours and a paid 10-minute rest per four-hour segment. The county schedules two 15s, which exceeds it.' },
+        { origin: 'Federal', color: MG, title: 'Overtime past 40 hours', detail: 'Time and a half, or comp time at your election. Overtime must be approved in advance except in a declared emergency.' },
+        { origin: 'Collective agreement', color: CY, title: 'Holidays and floating days', detail: 'Ten fixed holidays and one personal day a fiscal year. The personal day does not carry over.' }
+      ],
+      steps: [
+        { n: '1', color: CY, title: 'Check accrual and the cap here', detail: 'Accrual stops at 40 days, so a large balance is worth spending.', owner: 'You · inside the county' },
+        { n: '2', color: CY, title: 'Submit through the county HR system', detail: 'By 1 March for the summer period if it is over five days.', owner: 'You · in the HR system' },
+        { n: '3', color: CY, title: 'Supervisor approval, by seniority where it conflicts', detail: 'Conflicts are resolved on the record, per article 14.', owner: 'Your supervisor · inside the county' },
+        { n: '4', color: MG, title: 'For leave over two weeks, check the state programme', detail: 'Oregon pays; the federal rule protects your job. HR explains which applies, then you file with the state.', owner: 'HR, then the state agency ↗' }
+      ]
+    },
+    docs: [
+      { kicker: 'Policy · all employees', status: 'Acknowledged 14 June', statusColor: CY, title: 'Ethics and conflict of interest', summary: 'What must be declared, what may not be accepted, and how a declared conflict is managed. Declaring is routine; not declaring is the problem.', file: 'ethics-policy.pdf', routedTo: 'all employees' },
+      { kicker: 'Agreement · union-represented', status: 'For reference', statusColor: NT, title: 'Collective agreement, 2025–2028', summary: 'The full agreement with the articles most asked about summarised: accrual, overtime, comp time, holidays, grievance. The agreement itself governs.', file: 'cba-2025-2028.pdf', routedTo: 'union-represented employees' },
+      { kicker: 'Playbook · Human Services', status: 'For reference', statusColor: NT, title: 'Eligibility determination standards', summary: 'The written standard you apply, the documentation required, and the statutory timelines. Updated when program policy issues a change.', file: 'determination-standards.docx', routedTo: 'Human Services' }
+    ],
+    contacts: [
+      { purpose: 'Human Resources', name: 'Renata Silva', title: 'HR analyst · Cascade County', email: 'r.silva@cascade.example', phone: '(503) 555-0121 ext. 7', about: 'Pay, leave, classification, accommodation. Replies in two business days.' },
+      { purpose: 'Your supervisor, from the org chart', name: 'Lena Cho', title: 'Supervisor · Benefits Unit', email: 'l.cho@cascade.example', phone: '(503) 555-0166', about: 'Caseload, decisions, client escalations.' },
+      { purpose: 'Union steward', name: 'Marcus Dial', title: 'Steward · Local 503', email: 'steward@local503.example', phone: '(503) 555-0199', about: 'Working conditions, discipline, the agreement.' }
+    ]
+  },
+
+  finance: {
+    label: 'Finance · Analyst',
+    company: 'Harbour & Vale',
+    industry: 'Financial services · 620 employees',
+    name: 'Chen',
+    role: 'Senior Financial Analyst',
+    dept: 'Corporate Finance',
+    type: 'Full-time, salaried, exempt',
+    place: 'Jersey City, New Jersey, United States',
+    state: 'New Jersey',
+    country: 'United States',
+    tenure: 'Year 2',
+    hr: 'Ines in People',
+    stats: [
+      { label: 'PTO available now', value: '15 days', note: '22-day entitlement, accrued monthly, 5-day carryover.' },
+      { label: 'Working hours', value: '40 / week', note: 'Exempt. Close weeks run long; the policy names what that means.' },
+      { label: 'Eligible for', value: '11 of 11', note: 'Including the bonus plan and the deferred equity scheme.' },
+      { label: 'Outstanding', value: '1 attestation', note: 'Personal trading and outside activities, annual.' }
+    ],
+    duties: [
+      { cadence: 'Monthly close', checkedBy: 'Checked by your controller', title: 'Own your schedules through close', detail: 'Your reconciliations, your variance commentary, signed off by day five. Late is escalated, not absorbed.' },
+      { cadence: 'Always', checkedBy: 'Checked by Compliance', title: 'Pre-clear personal trades', detail: 'Anything on the restricted list needs pre-clearance before you trade. This is a regulatory obligation, not an internal preference.' },
+      { cadence: 'Always', checkedBy: 'Checked by Compliance', title: 'Handle material non-public information correctly', detail: 'If you learn something not public, you are restricted. Say so; do not quietly abstain.' },
+      { cadence: 'Annually', checkedBy: 'Checked by Compliance', title: 'Outside activities declaration', detail: 'Board seats, second jobs, family holdings. Declared and reviewed once a year, and whenever it changes.' },
+      { cadence: 'Quarterly', checkedBy: 'Checked by your controller', title: 'Control evidence for your own processes', detail: 'Keep the evidence as you work, not at audit time.' }
+    ],
+    notYours: [
+      'Signing off your own reconciliation. Preparer and approver are always different people.',
+      'Answering the auditors directly. Route through your controller.',
+      'Deciding whether a disclosure is required. That is the controller and legal.',
+      'Approving expenses above your delegated limit, even for your own team.'
+    ],
+    escalation: [
+      { step: '1', who: 'Nadia Fisk — your controller', when: 'Close, judgement calls, anything you are unsure how to book.' },
+      { step: '2', who: 'Compliance desk', when: 'Trading, information you should not have, an outside activity. Same day, always.' },
+      { step: '3', who: 'Ines Duarte — People', when: 'Pay, bonus questions, leave, conduct.' },
+      { step: '4', who: 'Whistleblowing line', when: 'When you believe something is wrong and the normal route is not the right one. Anonymous and outside the management line.' }
+    ],
+    rights: [
+      { origin: 'Company policy', color: CY, title: 'Annual bonus plan', verdict: 'Eligible now', verdictNote: 'Paid March, if employed on the payment date.', what: 'A target percentage of salary, funded on company performance and paid on individual performance.', howToClaim: 'Nothing to claim. The plan document explains funding and the leaver rules, which are the part people miss.', sourceLabel: 'Bonus plan 2027', verified: 'reviewed 1 August' },
+      { origin: 'Company policy', color: CY, title: 'Deferred equity — three-year vesting', verdict: 'Eligible now', verdictNote: 'First tranche vests 15 March.', what: 'Awards vest in three annual tranches. Leaving before a vest date forfeits the unvested part, with named good-leaver exceptions.', howToClaim: 'Nothing to claim. Read the good-leaver clause before you make any decision about leaving.', sourceLabel: 'Equity plan rules', verified: 'reviewed 1 August' },
+      { origin: 'New Jersey · state', color: MG, title: 'Temporary disability and family leave insurance', verdict: 'Applies to you', verdictNote: 'You contribute through payroll.', what: 'State-paid wage replacement for your own condition, bonding with a new child, or caring for a family member. Company paid leave can top it up.', howToClaim: 'You file with the state. Tell People at the same time so the internal side is set up.', sourceLabel: 'nj.gov', verified: 'link verified 12 August' },
+      { origin: 'New Jersey · state', color: MG, title: 'Earned sick leave — 40 hours', verdict: 'Applies to you', verdictNote: 'Accrued and available.', what: 'Paid sick time for you or a family member, protected from retaliation.', howToClaim: 'Tell your controller and log it. No note under three consecutive days.', sourceLabel: 'nj.gov', verified: 'link verified 12 August' },
+      { origin: 'Federal · United States', color: MG, title: 'Whistleblower protection', verdict: 'Applies to you', verdictNote: 'Financial services, reporting in good faith.', what: 'Protection from retaliation for reporting a suspected securities violation, internally or to the regulator.', howToClaim: 'Use the internal line, the regulator, or both. This platform summarises; the authority governs.', sourceLabel: 'sec.gov', verified: 'link verified 1 August' },
+      { origin: 'Company policy', color: CY, title: 'Retirement plan match — 6%', verdict: 'Eligible now', verdictNote: 'Two-year cliff vesting on the match.', what: 'The company matches the first 6% you contribute. Your own contributions are always yours; the match vests at two years.', howToClaim: 'Enrol and change your rate with the plan administrator.', sourceLabel: 'Plan administrator', verified: 'link verified 4 August' }
+    ],
+    time: {
+      stats: [
+        { label: 'PTO available now', value: '15 days', note: 'Of 22 accrued annually. Five days may carry to March.' },
+        { label: 'Booked ahead', value: '6 days', note: 'None in the close window, correctly.' },
+        { label: 'Sick days', value: 'As needed', note: 'Not a fixed allowance; state-protected sick time sits underneath it.' },
+        { label: 'Working hours', value: '40 / week', note: 'Exempt. Close weeks run long by design, not by accident.' }
+      ],
+      accrualNote: '1.83 days a month from your start date. Up to five days may carry into the new year and must be used by 31 March.',
+      accrualPct: '68%',
+      accrualCaption: '15 of 22 days available today.',
+      rules: [
+        { origin: 'Company', color: CY, title: 'Close blackout', detail: 'No planned leave in the first five business days of a month, or the last three of a quarter. Published a year ahead.' },
+        { origin: 'Company', color: CY, title: 'Mandatory two-week block', detail: 'Regulated roles take ten consecutive working days away from systems each year. It is a control, not a perk.' },
+        { origin: 'Federal', color: MG, title: 'Overtime does not apply to you', detail: 'Exempt classification. Long close weeks are not separately paid; the time-in-lieu policy is the company answer to that.' },
+        { origin: 'New Jersey · state', color: MG, title: 'Sick time is protected', detail: 'Using state sick time cannot count against you in performance or attendance. Forty hours a year.' }
+      ],
+      steps: [
+        { n: '1', color: CY, title: 'Check the balance and the blackout calendar', detail: 'Both live here. The calendar is published a year ahead.', owner: 'You · inside the company' },
+        { n: '2', color: CY, title: 'Agree it with your controller', detail: 'Cover for your schedules named before approval.', owner: 'You and your controller · inside the company' },
+        { n: '3', color: CY, title: 'File in the HR system', detail: 'This platform does not book leave.', owner: 'You · in the HR system' },
+        { n: '4', color: MG, title: 'For extended leave, the state programme pays', detail: 'New Jersey pays wage replacement; company top-up is separate. You file the state claim.', owner: 'People, then the state agency ↗' }
+      ]
+    },
+    docs: [
+      { kicker: 'Policy · regulated roles', status: 'Attestation outstanding', statusColor: MG, title: 'Personal trading and outside activities', summary: 'What must be pre-cleared, what is restricted, and what must be declared each year. The regulator, not the firm, sets the floor here.', file: 'personal-trading.pdf', routedTo: 'regulated roles' },
+      { kicker: 'Plan · full-time', status: 'For reference', statusColor: NT, title: 'Bonus plan and equity rules, 2027', summary: 'How the pool is funded, how individual awards are set, and what happens if you leave before a vest date. The plan document governs.', file: 'bonus-equity-2027.pdf', routedTo: 'full-time employees' },
+      { kicker: 'Playbook · Corporate Finance', status: 'For reference', statusColor: NT, title: 'Month-end close calendar and ownership', summary: 'Who owns which schedule, the day-five deadline, and the escalation path when a number is not ready.', file: 'close-calendar.xlsx', routedTo: 'Corporate Finance' },
+      { kicker: 'Individual · you', status: 'Private to you', statusColor: CY, title: 'Your award statements', summary: 'Grant dates, tranches and vest dates, uploaded to your record. Visible only to you.', file: 'awards-chen.pdf', routedTo: 'you only' }
+    ],
+    contacts: [
+      { purpose: 'People team', name: 'Ines Duarte', title: 'People partner · Jersey City', email: 'i.duarte@harbourvale.example', phone: '(201) 555-0112 ext. 30', about: 'Pay, bonus mechanics, leave, conduct.' },
+      { purpose: 'Your controller, from the org chart', name: 'Nadia Fisk', title: 'Financial controller', email: 'n.fisk@harbourvale.example', phone: '(201) 555-0158', about: 'Close, judgement calls, audit requests.' },
+      { purpose: 'Compliance desk', name: 'Compliance', title: 'Pre-clearance and declarations', email: 'compliance@harbourvale.example', phone: '(201) 555-0170', about: 'Trading, restricted lists, outside activities. Same-day response.' }
+    ]
+  },
+
+  construction: {
+    label: 'Construction · Foreman',
+    company: 'Kestrel Build',
+    industry: 'Construction · 480 employees',
+    name: 'Terrell',
+    role: 'Site Foreman',
+    dept: 'Field Operations',
+    type: 'Full-time, hourly, non-exempt',
+    place: 'Fresno, California, United States',
+    state: 'California',
+    country: 'United States',
+    tenure: 'Year 3',
+    hr: 'Gio in People',
+    stats: [
+      { label: 'PTO available now', value: '9 days', note: '15-day entitlement, accrued hourly, capped at 30 days.' },
+      { label: 'Working hours', value: '8 / day', note: 'Non-exempt: California pays overtime daily, not just weekly.' },
+      { label: 'Eligible for', value: '10 of 10', note: 'Including the tool allowance and certification support.' },
+      { label: 'Outstanding', value: '1 policy', note: 'Site safety v6 — the reporting window changed.' }
+    ],
+    duties: [
+      { cadence: 'Every morning', checkedBy: 'Checked by the site super', title: 'Run the pre-task brief', detail: 'Hazards, changes, who is doing what. Logged. A brief that did not happen is treated as work that should not have started.' },
+      { cadence: 'Every shift', checkedBy: 'Checked by Safety', title: 'Stop unsafe work', detail: 'You have the authority to stop work, and the obligation. Nobody above you can overrule a stop without putting it in writing.' },
+      { cadence: 'As it happens', checkedBy: 'Checked by Safety', title: 'Report incidents and near misses before the end of shift', detail: 'Version 6 shortened this from 48 hours, because late reports made claims harder for the people filing them.' },
+      { cadence: 'Weekly', checkedBy: 'Checked by the site super', title: 'Certifications and equipment log', detail: 'Nobody operates without a current card. You check; the office tracks expiry.' },
+      { cadence: 'Every shift', checkedBy: 'Checked by the punch record', title: 'Crew hours and breaks recorded accurately', detail: 'Missed or late meal breaks must be logged the same day — in California an untaken break carries a premium payment.' }
+    ],
+    notYours: [
+      'Authorising overtime beyond the daily schedule — that is the site superintendent.',
+      'Signing a change order or accepting scope from the client. Project management only.',
+      'Filing an injured crew member state claim for them. Report internally, then help them file their own.',
+      'Disciplinary action beyond a documented conversation. Bring People in.'
+    ],
+    escalation: [
+      { step: '1', who: 'Site superintendent', when: 'Schedule, crew, equipment, anything that stops the job.' },
+      { step: '2', who: 'Safety manager', when: 'Any stop-work, any incident, any near miss. Immediately, not at the end of the day.' },
+      { step: '3', who: 'Gio Marchetti — People', when: 'Pay, leave, certification support, conduct.' },
+      { step: '4', who: 'Anonymous safety line', when: 'When raising it through the site is not workable.' }
+    ],
+    rights: [
+      { origin: 'California · state', color: MG, title: 'Daily overtime and double time', verdict: 'Applies to you', verdictNote: 'Non-exempt, hourly.', what: 'Time and a half past 8 hours in a day and past 40 in a week; double time past 12 in a day and past 8 on a seventh consecutive day.', howToClaim: 'Automatic from the punch record. Raise a discrepancy inside the pay period.', sourceLabel: 'dir.ca.gov', verified: 'link verified 12 August' },
+      { origin: 'California · state', color: MG, title: 'Meal and rest break premiums', verdict: 'Applies to you', verdictNote: 'One extra hour of pay per missed break.', what: 'A 30-minute unpaid meal before the end of the fifth hour, a paid 10-minute rest per four hours. A missed break is paid at one extra hour.', howToClaim: 'Log the missed break the same day. Logging it is how the premium gets paid.', sourceLabel: 'dir.ca.gov', verified: 'link verified 12 August' },
+      { origin: 'California · state', color: MG, title: 'Paid family leave and state disability', verdict: 'Applies to you', verdictNote: 'Contributions taken through payroll.', what: 'State-paid wage replacement for your own injury or illness, bonding with a new child, or caring for a family member.', howToClaim: 'You file with the state. Read our guide first so you arrive with the right dates and numbers.', sourceLabel: 'edd.ca.gov', verified: 'link verified 12 August' },
+      { origin: 'California · state', color: MG, title: 'Workers compensation', verdict: 'Applies to you', verdictNote: 'From your first day.', what: 'Medical treatment and wage replacement for a work-related injury, regardless of fault.', howToClaim: 'Report to your super and Safety the same shift, then file the state claim form. Reporting fast protects the claim.', sourceLabel: 'dir.ca.gov', verified: 'link verified 12 August' },
+      { origin: 'Company policy', color: CY, title: 'Tool and boot allowance', verdict: 'Eligible now', verdictNote: '$600 a year, resets in July.', what: 'An annual allowance for tools, boots and personal protective equipment beyond what the company issues.', howToClaim: 'Buy it, submit the receipt through the expense tool.', sourceLabel: 'Field allowance policy', verified: 'reviewed 1 August' },
+      { origin: 'Company policy', color: CY, title: 'Certification support', verdict: 'Eligible now', verdictNote: 'Past 12 months of service.', what: 'The company pays for renewal and for one new certification a year, plus the time to sit it.', howToClaim: 'Get the super to approve the date, then People books it.', sourceLabel: 'Certification policy v2', verified: 'reviewed 1 August' }
+    ],
+    time: {
+      stats: [
+        { label: 'PTO available now', value: '9 days', note: 'Accrued hourly, capped at 30 days.' },
+        { label: 'Sick time', value: '5 days', note: 'California minimum met and exceeded. Rolls over up to 10 days.' },
+        { label: 'Overtime last week', value: '6.5 hours', note: 'Two days past 8 hours, one Saturday. Paid at premium.' },
+        { label: 'Break premiums paid', value: '2 hours', note: 'Two logged missed meals in August. Log them — that is how they get paid.' }
+      ],
+      accrualNote: 'Accrues at 0.058 hours per hour worked, roughly 15 days a year at full-time. Cap of 30 days; above the cap accrual stops until you use some.',
+      accrualPct: '60%',
+      accrualCaption: '9 of 15 annual days available today.',
+      rules: [
+        { origin: 'California · state', color: MG, title: 'Daily overtime', detail: 'Past 8 hours in a day, not just past 40 in a week. Double time past 12. This is stronger than the federal rule and it is the one that applies to you.' },
+        { origin: 'California · state', color: MG, title: 'Meal before the end of the fifth hour', detail: 'Not "sometime in the middle" — before the end of the fifth hour. A late meal is a missed meal for premium purposes.' },
+        { origin: 'Company', color: CY, title: 'Notice for planned time off', detail: 'Two weeks for anything over two days. Blackout in the two weeks before a scheduled pour or inspection.' },
+        { origin: 'Company', color: CY, title: 'Weather days', detail: 'A called-off day is not deducted from PTO. Show-up pay applies if you were on site.' }
+      ],
+      steps: [
+        { n: '1', color: CY, title: 'Check the balance and the cap', detail: 'Accrual stops at 30 days, so a big balance is worth spending.', owner: 'You · inside the company' },
+        { n: '2', color: CY, title: 'Clear the dates with your superintendent', detail: 'Two weeks ahead for more than two days.', owner: 'You and your super · inside the company' },
+        { n: '3', color: CY, title: 'Submit in the HR system', detail: 'This platform does not book time off.', owner: 'You · in the HR system' },
+        { n: '4', color: MG, title: 'Injury or extended illness goes to the state', detail: 'Report internally the same shift, then file with the state. Two different things, both necessary.', owner: 'Safety and People, then the state ↗' }
+      ]
+    },
+    docs: [
+      { kicker: 'Policy · field', status: 'Acknowledgment outstanding', statusColor: MG, title: 'Site safety and incident reporting, v6', summary: 'Report any injury, near miss or equipment fault before the end of shift — version 6 shortened the window from 48 hours. Reporting is never a mark against you.', file: 'site-safety-v6.pdf', routedTo: 'Field Operations' },
+      { kicker: 'Playbook · Field Operations', status: 'For reference', statusColor: NT, title: 'Foreman daily pack', summary: 'Pre-task brief template, break schedule, equipment log, and the escalation card for a stop-work. Written by your own department.', file: 'foreman-pack.docx', routedTo: 'Field Operations · foremen' },
+      { kicker: 'Notice · California', status: 'Required posting', statusColor: NT, title: 'State wage, break and workers compensation notices', summary: 'The postings that must be visible on site, kept here as well so you can read them without standing at the trailer wall.', file: 'ca-notices.pdf', routedTo: 'California sites' },
+      { kicker: 'Individual · you', status: 'Private to you', statusColor: CY, title: 'Your certification record', summary: 'Cards, expiry dates and the two reminders before each one. Uploaded by People.', file: 'certs-terrell.pdf', routedTo: 'you only' }
+    ],
+    contacts: [
+      { purpose: 'People team', name: 'Gio Marchetti', title: 'People partner · Central Valley', email: 'g.marchetti@kestrel.example', phone: '(559) 555-0102 ext. 44', about: 'Pay, time off, certification support, conduct.' },
+      { purpose: 'Your superintendent, from the org chart', name: 'Sasha Kline', title: 'Site superintendent', email: 's.kline@kestrel.example', phone: '(559) 555-0177', about: 'Schedule, crew, equipment, overtime authorisation.' },
+      { purpose: 'Safety', name: 'Safety manager', title: 'Kestrel Safety', email: 'safety@kestrel.example', phone: '(559) 555-0190', about: 'Stop-work, incidents, near misses. Immediately, any hour.' }
+    ]
+  },
+
+  realestate: {
+    label: 'Real estate · Agent',
+    company: 'Beacon Property Group',
+    industry: 'Real estate · 210 employees and agents',
+    name: 'Amara',
+    role: 'Licensed Sales Agent',
+    dept: 'Residential Brokerage',
+    type: 'Independent contractor, commission-only',
+    place: 'Miami, Florida, United States',
+    state: 'Florida',
+    country: 'United States',
+    tenure: 'Year 2',
+    hr: 'Rosa in Broker Support',
+    stats: [
+      { label: 'Employment status', value: 'Contractor', note: 'This changes almost everything below. The comparison is on the Rights tab.' },
+      { label: 'Working hours', value: 'You set them', note: 'No overtime, no break rules, no minimum hours. Also no schedule protection.' },
+      { label: 'Eligible for', value: '3 of 9', note: 'Contractors are outside most employee benefits. What you do get is listed.' },
+      { label: 'Outstanding', value: '1 attestation', note: 'Advertising and fair-housing rules, annual.' }
+    ],
+    duties: [
+      { cadence: 'Every listing', checkedBy: 'Checked by your broker', title: 'Broker review before publishing', detail: 'Listing copy, photos and disclosures reviewed before it goes live. The licence on the line is the brokerage as well as yours.' },
+      { cadence: 'Every transaction', checkedBy: 'Checked by transaction support', title: 'Complete file within five days of closing', detail: 'Signed documents, disclosures and the commission form. An incomplete file holds the payout.' },
+      { cadence: 'Always', checkedBy: 'Checked by your broker', title: 'Fair housing and advertising rules', detail: 'What you may say and how, in every channel including your own social accounts. State and federal, not brokerage preference.' },
+      { cadence: 'Annually', checkedBy: 'Checked by Broker Support', title: 'Licence renewal and continuing education', detail: 'Yours to keep current. The brokerage tracks the date and reminds you twice; it cannot renew for you.' },
+      { cadence: 'Always', checkedBy: 'Checked by your broker', title: 'Trust and escrow funds go straight to the brokerage', detail: 'Never to a personal account, not for an hour. This is the one rule with no judgement in it.' }
+    ],
+    notYours: [
+      'Holding client funds. Ever. They go to the brokerage escrow account.',
+      'Giving legal or tax advice on a transaction. Refer to counsel.',
+      'Signing on behalf of the brokerage. Only your broker can.',
+      'Negotiating the brokerage commission split outside your agreement. That is a written amendment.'
+    ],
+    escalation: [
+      { step: '1', who: 'Your team lead', when: 'Day-to-day questions on a listing or a deal.' },
+      { step: '2', who: 'Designated broker', when: 'Anything about compliance, advertising, a dispute, or a transaction going wrong. Sooner is always better.' },
+      { step: '3', who: 'Rosa Nunez — Broker Support', when: 'Commission statements, licence records, contractor paperwork.' },
+      { step: '4', who: 'State regulator', when: 'A licensing question the brokerage cannot answer. The link is on the Rights tab.' }
+    ],
+    rights: [
+      { origin: 'Contractor agreement', color: CY, title: 'Commission split and payment timing', verdict: 'Applies to you', verdictNote: 'Per your written agreement.', what: 'Your split, when the payout runs after closing, and what holds a payout. The written agreement governs, not a conversation.', howToClaim: 'Complete the transaction file. Payouts run twice a month against complete files.', sourceLabel: 'Contractor agreement', verified: 'reviewed 1 August' },
+      { origin: 'Brokerage policy', color: CY, title: 'Marketing, tools and lead access', verdict: 'Eligible now', verdictNote: 'Included at no cost to you.', what: 'The CRM, listing syndication, photography credits and the brokerage brand. What you pay for yourself is listed separately.', howToClaim: 'Request access through Broker Support.', sourceLabel: 'Agent services list', verified: 'reviewed 1 August' },
+      { origin: 'Contractor status', color: MG, title: 'What contractor status means for you', verdict: 'Read this one', verdictNote: 'It is the single biggest source of confusion here.', what: 'As a contractor you are outside employee minimum wage, overtime, break, sick-leave and unemployment protections, and you handle your own tax withholding. Misclassification is a real issue in this industry — if how you actually work looks like employment, that is worth asking about.', howToClaim: 'Nothing to claim. Read the summary, then ask Broker Support or the state if your situation does not match the agreement.', sourceLabel: 'myfloridalicense.com', verified: 'link verified 12 August' },
+      { origin: 'Federal · United States', color: MG, title: 'Fair housing obligations and protections', verdict: 'Applies to you', verdictNote: 'Regardless of employment status.', what: 'What may not influence how you show, advertise or negotiate, and where a complaint goes. Applies to contractors identically.', howToClaim: 'Nothing to claim; it is an obligation. Complaints route to the federal agency, or the state.', sourceLabel: 'hud.gov', verified: 'link verified 1 August' },
+      { origin: 'Florida · state', color: MG, title: 'Licence renewal and continuing education', verdict: 'Due 31 March', verdictNote: '14 CE hours, seven months to go.', what: 'Renewal every two years with continuing education, including the required core-law hours.', howToClaim: 'You renew with the state directly. The brokerage cannot do it for you and will remind you twice.', sourceLabel: 'myfloridalicense.com', verified: 'link verified 12 August' },
+      { origin: 'Brokerage policy', color: CY, title: 'Errors and omissions coverage', verdict: 'Eligible now', verdictNote: 'Under the brokerage policy, with a per-transaction fee.', what: 'Professional liability coverage for transactions run through the brokerage. Coverage limits and exclusions are in the summary.', howToClaim: 'Automatic on brokered transactions. Off-brokerage deals are not covered — a common and expensive misunderstanding.', sourceLabel: 'Coverage summary', verified: 'reviewed 4 August' }
+    ],
+    time: {
+      stats: [
+        { label: 'PTO', value: 'Not applicable', note: 'Contractors set their own schedule. There is no accrual and no approval.' },
+        { label: 'Working hours', value: 'You set them', note: 'No overtime and no break rules apply. Also no minimum.' },
+        { label: 'Coverage while away', value: 'Your arrangement', note: 'Name a covering agent in the CRM before you go. The brokerage does not assign one.' },
+        { label: 'Licence CE due', value: '31 March', note: '14 hours outstanding. You renew with the state.' }
+      ],
+      accrualNote: 'There is no accrual for contractors. What matters instead is coverage: an active listing needs a named covering agent while you are unreachable.',
+      accrualPct: '0%',
+      accrualCaption: 'No accrual — this is a contractor arrangement, not employment.',
+      rules: [
+        { origin: 'Contractor agreement', color: CY, title: 'You control your schedule', detail: 'No approval, no minimum hours, no blackout. The brokerage cannot require set hours without changing the nature of the agreement.' },
+        { origin: 'Federal', color: MG, title: 'Overtime and minimum wage do not apply', detail: 'Contractor status sits outside them. If your day-to-day looks like employment — set hours, required floor time, supervision of method — that is worth raising.' },
+        { origin: 'Florida · state', color: MG, title: 'No state sick-leave mandate', detail: 'Florida sets no paid sick leave requirement, and none would reach contractors in any case.' },
+        { origin: 'Brokerage policy', color: CY, title: 'Coverage before you go dark', detail: 'Name a covering agent on every active listing before a break. This is the one scheduling rule that does apply.' }
+      ],
+      steps: [
+        { n: '1', color: CY, title: 'Name a covering agent on active listings', detail: 'In the CRM, per listing. Tell your clients who it is.', owner: 'You · inside the brokerage' },
+        { n: '2', color: CY, title: 'Tell your team lead the dates', detail: 'Not for approval — so the desk knows who to route to.', owner: 'You and your team lead · inside the brokerage' },
+        { n: '3', color: CY, title: 'Set the CRM to away', detail: 'Stops lead assignment while you are out.', owner: 'You · in the CRM' },
+        { n: '4', color: MG, title: 'Check your licence and CE dates before a long break', detail: 'A lapsed licence stops you working. You renew with the state.', owner: 'You, with the state regulator ↗' }
+      ]
+    },
+    docs: [
+      { kicker: 'Policy · agents', status: 'Attestation outstanding', statusColor: MG, title: 'Advertising and fair-housing rules', summary: 'What you may say, in which channel, with which disclosures — including your own social accounts. State and federal rules, summarised, with the authorities linked.', file: 'advertising-rules.pdf', routedTo: 'licensed agents' },
+      { kicker: 'Agreement · contractors', status: 'For reference', statusColor: NT, title: 'Independent contractor agreement', summary: 'Your split, payout timing, what holds a payout, what the brokerage provides, and what you pay for. The signed agreement governs.', file: 'contractor-agreement.pdf', routedTo: 'independent contractors' },
+      { kicker: 'Playbook · Residential Brokerage', status: 'For reference', statusColor: NT, title: 'Listing to closing checklist', summary: 'Every document, in order, with who signs and when. The transaction file is what the payout runs against.', file: 'listing-checklist.docx', routedTo: 'Residential Brokerage' },
+      { kicker: 'Individual · you', status: 'Private to you', statusColor: CY, title: 'Your licence and commission statements', summary: 'Licence record with the renewal date, and every commission statement. Visible only to you.', file: 'agent-record-amara.pdf', routedTo: 'you only' }
+    ],
+    contacts: [
+      { purpose: 'Broker Support', name: 'Rosa Nunez', title: 'Broker support lead · Miami', email: 'r.nunez@beacon.example', phone: '(305) 555-0119 ext. 5', about: 'Commission statements, licence records, contractor paperwork.' },
+      { purpose: 'Designated broker', name: 'Hal Devereaux', title: 'Designated broker · Florida', email: 'h.devereaux@beacon.example', phone: '(305) 555-0140', about: 'Compliance, advertising, disputes, anything going wrong in a deal.' },
+      { purpose: 'Transaction support', name: 'Closing desk', title: 'Beacon transaction support', email: 'closing@beacon.example', phone: '(305) 555-0155', about: 'File completeness, payout timing, missing documents.' }
+    ]
+  }
+};
+
+const ORG = {
+  tech: { domain: 'northwind.example', base: '(512) 555-01', nodes: [
+    ['ceo', 'Helena Voss', 'Chief Executive', 'Executive', 'Austin office', 'Full-time', null],
+    ['cto', 'Adaeze Nwosu', 'Chief Technology Officer', 'Executive', 'Austin office', 'Full-time', 'ceo'],
+    ['pdir', 'Ivy Sandoval', 'Director, Product', 'Product and Design', 'Austin office', 'Full-time', 'ceo'],
+    ['hrd', 'Yusuf Adebayo', 'Head of People', 'People Ops', 'Austin office', 'Full-time', 'ceo'],
+    ['dir', 'Marcus Bell', 'Director, Platform', 'Platform Engineering', 'Austin office', 'Full-time', 'cto'],
+    ['sec', 'Noel Barrow', 'Head of Security', 'Security', 'Austin office', 'Full-time', 'cto'],
+    ['lead', 'Priya Raman', 'Tech lead', 'Platform Engineering', 'Austin office', 'Full-time', 'dir'],
+    ['me', 'Ravi Chandran', 'Software Engineer II', 'Platform Engineering', 'Austin office', 'Full-time, exempt', 'lead', 'you'],
+    ['t1', 'Tomas Ek', 'Software Engineer II', 'Platform Engineering', 'Austin office', 'Full-time', 'lead'],
+    ['t2', 'Grace Liu', 'Software Engineer I', 'Platform Engineering', 'Remote', 'Full-time', 'lead', 'leave'],
+    ['t3', 'Sam Iyer', 'Staff Engineer', 'Platform Engineering', 'Austin office', 'Full-time', 'lead', '', 'sec'],
+    ['o1', '', 'Software Engineer II', 'Platform Engineering', 'Austin office', '', 'lead', 'open'],
+    ['hr', 'Dana Okafor', 'People Ops partner \u00b7 Austin', 'People Ops', 'Austin office', 'Full-time', 'hrd'],
+    ['o2', '', 'Product Designer', 'Product and Design', 'Remote', '', 'pdir', 'open']
+  ] },
+  health: { domain: 'ridgeline.example', base: '(201) 555-01', nodes: [
+    ['ceo', 'Ren\u00e9e Duval', 'Chief Executive', 'Executive', 'Ridgeline Bergen', 'Full-time', null],
+    ['cno', 'Everett Shaw', 'Chief Nursing Officer', 'Clinical Operations', 'Ridgeline Bergen', 'Full-time', 'ceo'],
+    ['hrd', 'Priya Sunder', 'Director of People', 'People and Credentialing', 'Ridgeline Bergen', 'Full-time', 'ceo'],
+    ['dir', 'Camille Boateng', 'Director of Nursing', 'Clinical Operations', 'Ridgeline Bergen', 'Full-time', 'cno'],
+    ['hs', 'Ivo Marek', 'House supervisor \u00b7 nights', 'Clinical Operations', 'Ridgeline Bergen', 'Full-time', 'cno', '', 'mgr'],
+    ['mgr', 'Ana Petrov', 'Nurse manager \u00b7 4 West', 'Clinical Operations', '4 West', 'Full-time', 'dir'],
+    ['charge', 'Josiah Lund', 'Charge nurse \u00b7 nights', 'Clinical Operations', '4 West', 'Full-time', 'mgr'],
+    ['me', 'Marisol Vega', 'Registered Nurse, 4 West', 'Clinical Operations', '4 West', 'Per-diem, hourly', 'mgr', 'you'],
+    ['h1', 'Bea Ortiz', 'Registered Nurse, 4 West', 'Clinical Operations', '4 West', 'Full-time', 'mgr'],
+    ['h2', 'Kwame Asare', 'Patient Care Technician', 'Clinical Operations', '4 West', 'Part-time', 'mgr'],
+    ['h3', 'Dilnoza Karim', 'Registered Nurse, 4 West', 'Clinical Operations', '4 West', 'Full-time', 'mgr', 'leave'],
+    ['o1', '', 'Registered Nurse \u00b7 nights', 'Clinical Operations', '4 West', '', 'mgr', 'open'],
+    ['hr', 'Dara Whitfield', 'HR generalist \u00b7 Ridgeline Bergen', 'People and Credentialing', 'Ridgeline Bergen', 'Full-time', 'hrd'],
+    ['cred', 'Tomas Piedra', 'Credentialing specialist', 'People and Credentialing', 'Ridgeline Bergen', 'Full-time', 'hrd']
+  ] },
+  gov: { domain: 'cascade.example', base: '(503) 555-01', nodes: [
+    ['adm', 'Marion Whitlock', 'County Administrator', 'Executive', 'Salem', 'Full-time', null],
+    ['hsdir', 'Priscilla Nakai', 'Director, Human Services', 'Human Services', 'Salem', 'Full-time', 'adm'],
+    ['hrd', 'Owen Baptiste', 'HR Director', 'Human Resources', 'Salem', 'Full-time', 'adm'],
+    ['mgr', 'Teodora Ilic', 'Program Manager, Benefits', 'Human Services', 'Salem', 'Full-time', 'hsdir'],
+    ['pol', 'Ike Sandoval', 'Program policy lead', 'Human Services', 'Salem', 'Full-time', 'hsdir'],
+    ['sup', 'Lena Cho', 'Supervisor \u00b7 Benefits Unit', 'Human Services', 'Salem', 'Full-time', 'mgr'],
+    ['me', 'Alan Reyes', 'Benefits Caseworker II', 'Human Services', 'Salem', 'Full-time, classified', 'sup', 'you'],
+    ['g1', 'Nadine Trosclair', 'Benefits Caseworker II', 'Human Services', 'Salem', 'Full-time', 'sup'],
+    ['g2', 'Petra Ostrowski', 'Benefits Caseworker I', 'Human Services', 'Salem', 'Full-time', 'sup'],
+    ['g3', 'Hollis Vance', 'Benefits Caseworker I', 'Human Services', 'Woodburn office', 'Full-time', 'sup', 'leave'],
+    ['stew', 'Marcus Dial', 'Caseworker II \u00b7 union steward, Local 503', 'Human Services', 'Salem', 'Full-time', 'sup'],
+    ['o1', '', 'Benefits Caseworker I', 'Human Services', 'Salem', '', 'sup', 'open'],
+    ['hr', 'Renata Silva', 'HR analyst \u00b7 Cascade County', 'Human Resources', 'Salem', 'Full-time', 'hrd']
+  ] },
+  finance: { domain: 'harbourvale.example', base: '(201) 555-02', nodes: [
+    ['ceo', 'Beatrix Vale', 'Chief Executive', 'Executive', 'Jersey City office', 'Full-time', null],
+    ['cfo', 'Anton Rehm', 'Chief Financial Officer', 'Corporate Finance', 'Jersey City office', 'Full-time', 'ceo'],
+    ['comp', 'Yara Halabi', 'Head of Risk and Compliance', 'Risk and Compliance', 'Jersey City office', 'Full-time', 'ceo'],
+    ['hrd', 'Ines Duarte', 'People partner \u00b7 Jersey City', 'People', 'Jersey City office', 'Full-time', 'ceo'],
+    ['ctrl', 'Nadia Fisk', 'Financial controller', 'Corporate Finance', 'Jersey City office', 'Full-time', 'cfo'],
+    ['ops', 'Delphine Cardoso', 'Head of Investment Operations', 'Investment Operations', 'Jersey City office', 'Full-time', 'cfo'],
+    ['me', 'Chen Ruo', 'Senior Financial Analyst', 'Corporate Finance', 'Jersey City office', 'Full-time, exempt', 'ctrl', 'you'],
+    ['f1', 'Marek Duplessis', 'Financial Analyst', 'Corporate Finance', 'Jersey City office', 'Full-time', 'ctrl'],
+    ['f2', 'Solange Abara', 'Financial Analyst', 'Corporate Finance', 'Remote', 'Full-time', 'ctrl'],
+    ['f3', 'Nils Broman', 'Senior Financial Analyst', 'Corporate Finance', 'Jersey City office', 'Full-time', 'ctrl', '', 'comp'],
+    ['o1', '', 'Financial Analyst', 'Corporate Finance', 'Jersey City office', '', 'ctrl', 'open'],
+    ['pay', 'Grigor Yesayan', 'Payroll specialist', 'People', 'Jersey City office', 'Full-time', 'hrd']
+  ] },
+  construction: { domain: 'kestrel.example', base: '(559) 555-01', nodes: [
+    ['ceo', 'Warren Kestrel', 'Chief Executive', 'Executive', 'Fresno yard', 'Full-time', null],
+    ['ops', 'Marguerite Sallis', 'VP Field Operations', 'Field Operations', 'Fresno yard', 'Full-time', 'ceo'],
+    ['safe', 'Odalys Bram', 'Safety manager', 'Safety', 'Fresno yard', 'Full-time', 'ceo'],
+    ['hrd', 'Gio Marchetti', 'People partner \u00b7 Central Valley', 'People and Payroll', 'Fresno yard', 'Full-time', 'ceo'],
+    ['sup', 'Sasha Kline', 'Site superintendent', 'Field Operations', 'Fresno yard', 'Full-time', 'ops'],
+    ['pm', 'Marta Quintero', 'Project Manager', 'Project Management', 'Bakersfield yard', 'Full-time', 'ops'],
+    ['me', 'Terrell Boyd', 'Site Foreman', 'Field Operations', 'Fresno yard', 'Full-time, hourly', 'sup', 'you'],
+    ['c1', 'Wren Adeyemi', 'Skilled Tradesperson', 'Field Operations', 'Fresno yard', 'Full-time', 'me'],
+    ['c2', 'Hector Bala', 'Labourer', 'Field Operations', 'Fresno yard', 'Full-time', 'me'],
+    ['c3', 'June Okwuosa', 'Labourer', 'Field Operations', 'Fresno yard', 'Seasonal', 'me'],
+    ['c4', 'Iggy Prieto', 'Equipment operator', 'Field Operations', 'Fresno yard', 'Full-time', 'me', 'leave'],
+    ['o1', '', 'Labourer', 'Field Operations', 'Bakersfield yard', '', 'sup', 'open'],
+    ['sc', 'Noor Haddad', 'Safety coordinator', 'Safety', 'Fresno yard', 'Full-time', 'safe', '', 'sup'],
+    ['pay', 'Iva Petroni', 'Payroll specialist', 'People and Payroll', 'Remote', 'Part-time', 'hrd']
+  ] },
+  realestate: { domain: 'beacon.example', base: '(305) 555-01', nodes: [
+    ['db', 'Hal Devereaux', 'Designated broker \u00b7 Florida', 'Broker Support', 'Miami office', 'Full-time', null],
+    ['lead', 'Camila Restrepo', 'Team lead \u00b7 Residential', 'Residential Brokerage', 'Miami office', 'Full-time', 'db'],
+    ['lead2', 'Bev Toussaint', 'Team lead \u00b7 Waterfront', 'Residential Brokerage', 'Miami office', 'Full-time', 'db'],
+    ['bs', 'Rosa Nunez', 'Broker support lead \u00b7 Miami', 'Broker Support', 'Miami office', 'Full-time', 'db'],
+    ['pm', 'Ozzie Rambaldi', 'Property manager', 'Property Management', 'Miami office', 'Full-time', 'db'],
+    ['me', 'Amara Osei', 'Licensed Sales Agent', 'Residential Brokerage', 'Miami office', 'Independent contractor', 'lead', 'you'],
+    ['r1', 'Dov Halperin', 'Licensed Sales Agent', 'Residential Brokerage', 'Miami office', 'Independent contractor', 'lead'],
+    ['r2', 'Suri Anand', 'Licensed Sales Agent', 'Residential Brokerage', 'Coral Gables office', 'Independent contractor', 'lead'],
+    ['close', 'Yannick Aubert', 'Closing coordinator', 'Transaction Support', 'Miami office', 'Full-time', 'bs'],
+    ['comp', 'Elke Sorensen', 'Compliance reviewer', 'Transaction Support', 'Miami office', 'Full-time', 'bs', '', 'db'],
+    ['mk', 'Nina Falk', 'Marketing specialist', 'Broker Support', 'Remote', 'Part-time', 'bs'],
+    ['o1', '', 'Leasing consultant', 'Property Management', 'Coral Gables office', '', 'pm', 'open']
+  ] }
+};
+
+const EXTRA = {
+  tech: { start: '2026-01-05', site: 'Austin office', empId: 'NW-4182', method: 'company single sign-on',
+    next: 'Retirement match opens 1 April — 12 months of service',
+    pinned: [
+      { kind: 'Waiting on you', color: MG, why: 'Everyone', title: 'Acceptable use of company systems, v7', note: 'Nine days old, and the AI coding tool rules are new. Two minutes to read and acknowledge.', action: 'Read and acknowledge' },
+      { kind: 'Most opened', color: CY, why: 'Platform Engineering', title: 'On-call handbook', note: 'Rotation, what counts as a page, and what you are owed for a night that goes badly.', action: 'Open the playbook' },
+      { kind: 'Form', color: CY, why: 'Everyone', title: 'Book time off', note: 'Balance is here; the request itself is filed in the HR system. This link goes straight there.', action: 'Open the HR system ↗' },
+      { kind: 'Contact', color: CY, why: 'Austin', title: 'Dana Okafor — People Ops', note: 'Pay, leave, benefits, conduct. Replies within one business day.', action: 'Email or call' }
+    ] },
+  health: { start: '2026-08-21', site: '4 West, Ridgeline Bergen', empId: 'RC-90233', method: 'badge sign-on at the unit terminal',
+    next: 'Health, dental and vision open 1 November — first of the month after 60 days',
+    pinned: [
+      { kind: 'Waiting on you', color: MG, why: 'Anyone charting', title: 'Patient privacy and information handling, v4', note: 'Due within two weeks of your first shift. Version 4 adds hallway and elevator conversations explicitly.', action: 'Read and acknowledge' },
+      { kind: 'Waiting on you', color: MG, why: 'Everyone', title: 'Timekeeping and shift differentials, v2', note: 'Differentials are paid from the punch, not the schedule. Worth knowing in week one.', action: 'Read and acknowledge' },
+      { kind: 'Most opened', color: CY, why: 'Clinical Operations · 4 West', title: 'Unit orientation, 4 West', note: 'Layout, supply rooms, after-hours escalation, and the twelve acronyms used on the floor.', action: 'Open the playbook' },
+      { kind: 'Your date', color: MG, why: 'Per-diem', title: 'Your benefits open on 1 November', note: 'A 30-day enrolment window opens the same day. Missing it means waiting for open enrolment.', action: 'See the eligibility dates' }
+    ] },
+  gov: { start: '2022-06-13', site: 'Salem office', empId: 'CC-1147', method: 'county single sign-on',
+    next: 'Vacation accrual steps up 3 March — five years of continuous service',
+    pinned: [
+      { kind: 'Most opened', color: CY, why: 'Union-represented', title: 'Collective agreement, 2025–2028', note: 'The articles people ask about most — accrual, overtime, comp time, grievance — summarised, with the agreement itself linked.', action: 'Open the summary' },
+      { kind: 'Your date', color: MG, why: 'Article 14', title: 'Accrual step-up on 3 March', note: 'Fifteen days a year becomes twenty. Automatic — check your first March paystub.', action: 'See the eligibility dates' },
+      { kind: 'Form', color: CY, why: 'Everyone', title: 'Loan forgiveness employment certification', note: 'The county certifies your employment; you file with the federal servicer yourself.', action: 'Open the guide' },
+      { kind: 'Contact', color: CY, why: 'Local 503', title: 'Marcus Dial — union steward', note: 'Working conditions, discipline, the agreement.', action: 'Email or call' }
+    ] },
+  finance: { start: '2024-07-08', site: 'Jersey City office', empId: 'HV-0592', method: 'company single sign-on',
+    next: 'First equity tranche vests 15 March',
+    pinned: [
+      { kind: 'Waiting on you', color: MG, why: 'Regulated roles', title: 'Personal trading and outside activities', note: 'Annual attestation outstanding. The regulator, not the firm, sets the floor here.', action: 'Read and attest' },
+      { kind: 'Most opened', color: CY, why: 'Full-time', title: 'Bonus plan and equity rules, 2027', note: 'How the pool is funded, and what happens if you leave before a vest date — the part people miss.', action: 'Open the summary' },
+      { kind: 'Your date', color: MG, why: 'Equity plan', title: 'First tranche vests 15 March', note: 'Read the good-leaver clause before making any decision about leaving.', action: 'See the eligibility dates' },
+      { kind: 'Contact', color: CY, why: 'Same-day response', title: 'Compliance desk', note: 'Trading, restricted lists, information you should not have. Same day, always.', action: 'Email or call' }
+    ] },
+  construction: { start: '2023-05-02', site: 'Fresno yard', empId: 'KB-2210', method: 'company single sign-on',
+    next: 'Tool and boot allowance resets 1 July — $600',
+    pinned: [
+      { kind: 'Waiting on you', color: MG, why: 'Field Operations', title: 'Site safety and incident reporting, v6', note: 'The reporting window is now end of shift, not 48 hours. Read it before your next brief.', action: 'Read and acknowledge' },
+      { kind: 'Most opened', color: CY, why: 'Field Operations · foremen', title: 'Foreman daily pack', note: 'Pre-task brief template, break schedule, equipment log, and the stop-work escalation card.', action: 'Open the playbook' },
+      { kind: 'Form', color: CY, why: 'California sites', title: 'Report an injury — six steps', note: 'Ends with the state claim form and the two people who can help you file it.', action: 'Open the guide' },
+      { kind: 'Posting', color: CY, why: 'Fresno and Bakersfield', title: 'California wage, break and workers comp notices', note: 'The postings from the trailer wall, readable here instead of standing in front of them.', action: 'Open the postings' }
+    ] },
+  realestate: { start: '2024-02-19', site: 'Miami office', empId: 'BP-3391', method: 'brokerage single sign-on',
+    next: 'Licence renewal due 31 March — 14 CE hours outstanding',
+    pinned: [
+      { kind: 'Waiting on you', color: MG, why: 'Licensed agents', title: 'Advertising and fair-housing rules', note: 'Annual attestation outstanding. Covers your own social accounts, not just brokerage channels.', action: 'Read and attest' },
+      { kind: 'Your date', color: MG, why: 'Florida', title: 'Licence renewal due 31 March', note: '14 CE hours outstanding. You renew with the state — the brokerage cannot do it for you.', action: 'Open the renewal guide' },
+      { kind: 'Most opened', color: CY, why: 'Residential Brokerage', title: 'Listing to closing checklist', note: 'Every document, in order, with who signs and when. The payout runs against the complete file.', action: 'Open the playbook' },
+      { kind: 'Read this', color: MG, why: 'Independent contractor', title: 'What contractor status means for you', note: 'The single biggest source of confusion here — what you are outside of, and what still applies.', action: 'Open the summary' }
+    ] }
+};
+
+const STOP = ['the','and','for','are','can','how','who','what','when','where','why','with','does','did','have','has','had','from','into','out','any','all','you','your','yours','my','mine','me','i','is','it','its','do','of','to','on','in','at','a','an','get','got','much','many','more','long','been','here','there','this','that','these','those','now','today','need','want','know','tell','about','they','them','their','he','she','his','her','if','or','but','not','am','be','was','were','will','would','should','could','may','might','ask'];
+
+const INTENTS = [
+  { re: /how long|been here|been with|my tenure|seniority|anniversar|start(ed)? date|years of service/, intent: 'tenure' },
+  { re: /who (do|should|can|would) i (ask|contact|call|talk|speak|email)|who to (ask|contact|call)|who should i|not sure who|reach out|need (some )?help|nobody (told|said)|lost/, intent: 'contact' }
+];
+
+const SYN = {
+  maternity: ['parental', 'new parent', 'birth', 'adoption', 'bonding', 'family leave'],
+  paternity: ['parental', 'new parent', 'birth', 'adoption', 'bonding', 'family leave'],
+  parental: ['new parent', 'birth', 'adoption', 'bonding'],
+  pregnancy: ['parental', 'birth', 'disability'],
+  pto: ['time off', 'vacation', 'accrued', 'accrual', 'holiday'],
+  vacation: ['time off', 'pto', 'accrual'],
+  holiday: ['holidays', 'time off'],
+  sick: ['sick leave', 'sick time', 'illness'],
+  leave: ['leave'],
+  overtime: ['overtime', 'time and a half', 'double time', 'past 8 hours', 'past 40'],
+  break: ['break', 'meal', 'rest', 'premium'],
+  breaks: ['break', 'meal', 'rest'],
+  meal: ['meal', 'break'],
+  pay: ['pay', 'paid', 'wage', 'payroll', 'rate'],
+  payslip: ['paystub', 'payroll'],
+  paystub: ['paystub', 'payroll'],
+  injury: ['injury', 'injured', 'workers compensation', 'incident'],
+  injured: ['injury', 'workers compensation', 'incident'],
+  claim: ['claim', 'file', 'filing'],
+  eligible: ['eligible', 'eligibility', 'unlocks'],
+  eligibility: ['eligible', 'eligibility'],
+  retirement: ['retirement', 'plan', 'match', '401'],
+  pension: ['retirement', 'plan', 'match'],
+  insurance: ['insurance', 'medical', 'dental', 'vision', 'coverage'],
+  medical: ['medical', 'health', 'coverage', 'insurance'],
+  health: ['health', 'medical', 'coverage'],
+  education: ['learning', 'training', 'tuition', 'course', 'certification', 'continuing education'],
+  tuition: ['learning', 'education', 'course'],
+  learning: ['learning', 'education', 'course', 'conference'],
+  training: ['training', 'certification', 'competencies', 'learning'],
+  budget: ['budget', 'allowance', 'learning'],
+  allowance: ['allowance', 'budget', 'tool', 'boot'],
+  boots: ['boot', 'protective equipment'],
+  tools: ['tool allowance', 'protective equipment'],
+  responsibility: ['responsible', 'own', 'duty', 'checked by'],
+  responsibilities: ['responsible', 'own', 'duty', 'checked by'],
+  contact: ['contact', 'email', 'phone'],
+  help: ['help', 'support'],
+  manager: ['manager', 'lead', 'supervisor', 'superintendent', 'charge nurse'],
+  hr: ['people', 'human resources', 'people ops', 'people partner', 'broker support'],
+  tenure: ['tenure', 'service', 'started', 'start date'],
+  seniority: ['tenure', 'service', 'seniority'],
+  anniversary: ['tenure', 'start date', 'service'],
+  probation: ['probation', 'first 90', 'new hire', 'waiting period'],
+  notice: ['notice', 'ahead', 'two weeks'],
+  book: ['book', 'request', 'file', 'submit'],
+  request: ['request', 'book', 'submit', 'file'],
+  overtimepay: ['overtime'],
+  discrimination: ['discrimination', 'harassment', 'protected'],
+  harassment: ['harassment', 'discrimination', 'conduct'],
+  conduct: ['conduct', 'behaviour', 'behavior'],
+  privacy: ['privacy', 'confidential', 'data', 'disclosure'],
+  licence: ['licence', 'license', 'renewal', 'continuing education'],
+  license: ['licence', 'license', 'renewal', 'continuing education'],
+  bonus: ['bonus', 'incentive', 'award'],
+  equity: ['equity', 'award', 'vest', 'grant', 'tranche'],
+  commission: ['commission', 'split', 'payout'],
+  differential: ['differential', 'night', 'weekend', 'premium'],
+  contractor: ['contractor', 'independent', 'misclassification'],
+  union: ['union', 'collective', 'steward', 'agreement'],
+  disability: ['disability', 'wage replacement', 'temporary'],
+  unemployment: ['unemployment', 'claim'],
+  safety: ['safety', 'incident', 'near miss', 'stop work', 'hazard'],
+  expenses: ['expense', 'receipt', 'reimburse', 'submit'],
+  expense: ['expense', 'receipt', 'reimburse']
+};
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const TABS = [
+  { key: 'home', label: 'Home' },
+  { key: 'role', label: 'My role' },
+  { key: 'rights', label: 'Rights and eligibility' },
+  { key: 'time', label: 'Time and hours' },
+  { key: 'docs', label: 'Documents and contacts' },
+  { key: 'org', label: 'Org chart' }
+];
+
+class Component extends DCLogic {
+  state = { persona: 'tech', tab: 'home', device: 'desktop', filter: 'All', query: '', acked: {}, focus: 'me', orgQuery: '' };
+
+  index(p, x) {
+    const out = [];
+    const push = (group, kind, color, title, text, action, tags, locked, intent) =>
+      out.push({
+        group, kind, color, title, text, action, intent: intent || '',
+        titleHay: title.toLowerCase(),
+        hay: (title + ' ' + text).toLowerCase(),
+        tagHay: (tags || '').toLowerCase(),
+        locked: locked || ''
+      });
+
+    p.rights.forEach(r => {
+      const federal = /Federal/.test(r.origin);
+      const state = /state|Contractor status/.test(r.origin) && !federal;
+      const locked = /^Eligible on|^Due /.test(r.verdict) ? r.verdict.replace('Eligible on', 'Unlocks').replace('Due ', 'Due ') + ' · ' + r.verdictNote : '';
+      push(federal ? 'federal' : state ? 'state' : 'company', r.origin, federal || state ? MG : CY, r.title,
+        r.what + ' To claim it — ' + r.howToClaim, 'Open it on Rights and eligibility',
+        'pto vacation leave holiday sick maternity paternity parental claim eligible eligibility rights overtime break pay benefit budget education tuition', locked);
+    });
+    p.time.rules.forEach(r => push(/Federal/.test(r.origin) ? 'federal' : /state/.test(r.origin) ? 'state' : 'company',
+      r.origin + ' · hours', /Federal|state/.test(r.origin) ? MG : CY, r.title, r.detail, 'Open it on Time and hours',
+      'hours overtime break meal rest notice blackout holiday schedule shift accrual carryover pto'));
+    p.time.steps.forEach(st => push('company', 'Process · step ' + st.n, CY, st.title, st.detail + ' ' + st.owner,
+      'Open the step-by-step guide', 'how do i book request file process claim time off leave apply'));
+    p.duties.forEach(d => push('company', 'Your responsibilities · ' + d.cadence.toLowerCase(), CY, d.title, d.detail + ' ' + d.checkedBy,
+      'Open it on My role', 'responsibility responsible duty own job expectations role what am i'));
+    p.docs.forEach(d => push('documents', d.kicker, /outstanding/i.test(d.status) ? MG : CY, d.title,
+      d.summary, 'Read the summary, or open ' + d.file, d.file + ' pdf docx document policy handbook file'));
+    p.contacts.forEach(c => push('contacts', c.purpose, CY, c.name, c.title + '. ' + c.about + ' ' + c.email + ' ' + c.phone,
+      'Email or call', 'contact email phone reach out ' + c.purpose, '', 'contact'));
+    p.escalation.forEach(e => push('contacts', 'Escalation · step ' + e.step, CY, e.who, e.when,
+      'See the full escalation path on My role', 'escalate escalation contact ask', '', 'contact'));
+    push('company', 'Your record', CY, 'How long you have been here',
+      'You started on ' + x.start + '. Tenure is what unlocks dated entitlements, and it is on your home screen.',
+      'Open your record on Home', 'tenure service anniversary start date seniority', '', 'tenure');
+    return out;
+  }
+
+  chipDark(active) {
+    const b = 'font-size:12px; padding:5px 10px; border-radius:2px; cursor:pointer; border:1px solid ';
+    return active ? b + 'transparent; background:var(--color-accent); color:#fff;'
+                  : b + 'rgba(255,255,255,0.28); background:transparent; color:var(--color-neutral-200);';
+  }
+  tabCss(active) {
+    return 'font-size:14.5px; padding:9px 2px 11px; background:none; border:none; cursor:pointer; letter-spacing:0.01em; color:'
+      + (active ? 'var(--color-text)' : 'var(--color-neutral-600)')
+      + '; border-bottom:2px solid ' + (active ? 'var(--color-accent)' : 'transparent') + ';';
+  }
+  filterCss(active) {
+    const b = 'font-size:12.5px; padding:6px 12px; border-radius:2px; cursor:pointer; border:1px solid ';
+    return active ? b + 'var(--color-accent); background:var(--color-accent); color:#fff;'
+                  : b + 'var(--color-neutral-400); background:transparent; color:var(--color-neutral-700);';
+  }
+
+  tenureFrom(startISO) {
+    const a = new Date(startISO + 'T00:00:00');
+    const b = new Date();
+    let months = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+    if (b.getDate() < a.getDate()) months -= 1;
+    const days = Math.round((b - a) / 86400000);
+    const y = Math.floor(months / 12), m = months % 12;
+    let long;
+    if (days < 0) long = 'starting in ' + (-days) + (days === -1 ? ' day' : ' days');
+    else if (days < 31) long = days + (days === 1 ? ' day' : ' days');
+    else if (y === 0) long = m + (m === 1 ? ' month' : ' months');
+    else long = y + (y === 1 ? ' year' : ' years') + (m ? ', ' + m + (m === 1 ? ' month' : ' months') : '');
+    return { long, days, months, since: a.getDate() + ' ' + MONTHS[a.getMonth()] + ' ' + a.getFullYear() };
+  }
+
+  groupDocs(docs) {
+    const HEADS = [
+      ['Company policies', /^Policy/, 'The policies everyone here is expected to have read. Each says what it covers, who it applies to and what to do when something goes wrong.'],
+      ['Pay and benefits', /^Plan|^Agreement|^Benefits/, 'What you are paid and what you are entitled to, with the dates each thing opens to you.'],
+      ['Required postings', /^Notice/, 'The notices this site is legally required to display, kept as images of the posted original. Displayed at your site whether or not you open them here.'],
+      ['Role and department packs', /^Playbook/, 'The day-to-day documents for your role — written by your department, not by HR.'],
+      ['Yours alone', /^Individual/, 'Documents about you specifically. Nobody else in the company can open these.']
+    ];
+    const out = [];
+    HEADS.forEach(h => {
+      const items = docs.filter(d => h[1].test(d.kicker));
+      if (!items.length) return;
+      const outstanding = items.filter(d => /outstanding|required posting/i.test(d.status)).length;
+      out.push({
+        name: h[0], items, summary: h[2],
+        req: h[0] === 'Required postings'
+          ? items.length + (items.length === 1 ? ' notice' : ' notices') + ' posted at your site'
+          : outstanding ? outstanding + (outstanding === 1 ? ' item' : ' items') + ' waiting on you' : 'Nothing outstanding',
+        reqColor: h[0] === 'Required postings' ? CY : outstanding ? MG : NT,
+        byline: h[0] === 'Yours alone'
+          ? 'Filed to you by your admin · visible to nobody else'
+          : h[0] === 'Required postings'
+            ? 'Statutory — your admin confirms each one against the issuing agency · ' + items.length + (items.length === 1 ? ' notice' : ' notices')
+            : 'Summary published by your admin · ' + items.length + (items.length === 1 ? ' document' : ' documents') + ' filed here'
+      });
+    });
+    const rest = docs.filter(d => !HEADS.some(h => h[1].test(d.kicker)));
+    if (rest.length) out.push({
+      name: 'Everything else', items: rest,
+      summary: 'Filed here because your admin has not yet given them a heading.',
+      req: 'Nothing outstanding', reqColor: NT,
+      byline: 'No summary published for this heading yet'
+    });
+    return out;
+  }
+
+  renderVals() {
+    const p = P[this.state.persona];
+    const x = EXTRA[this.state.persona];
+    const q = (this.state.query || '').trim().toLowerCase();
+    const searching = q.length > 1;
+    const terms = q.split(/[^a-z0-9$]+/).filter(t => t.length > 2 && STOP.indexOf(t) < 0);
+    const intent = searching ? ((INTENTS.find(i => i.re.test(q)) || {}).intent || '') : '';
+    const idx = searching ? this.index(p, x) : [];
+    const rank = (expand) => {
+      const stem = t => {
+        const v = [t];
+        if (/ies$/.test(t)) v.push(t.slice(0, -3) + 'y');
+        if (/es$/.test(t)) v.push(t.slice(0, -2));
+        if (/s$/.test(t)) v.push(t.slice(0, -1));
+        if (/ing$/.test(t) && t.length > 5) v.push(t.slice(0, -3));
+        if (!/s$/.test(t)) v.push(t + 's');
+        return v;
+      };
+      const groups = terms.map(t => {
+        const v = stem(t);
+        return expand ? v.concat(v.reduce((o, w) => o.concat(SYN[w] || []), [])) : v;
+      });
+      if (!groups.length) return [];
+      return idx.map(it => {
+        let score = 0, matched = 0;
+        groups.forEach(g => {
+          const inTitle = g.some(v => it.titleHay.indexOf(v) >= 0);
+          const inBody = g.some(v => it.hay.indexOf(v) >= 0);
+          if (inTitle || inBody) { matched += 1; score += inTitle ? 4 : 2; }
+          else if (g.some(v => it.tagHay.indexOf(v) >= 0)) { score += 0.5; }
+        });
+        return { it, n: matched, score };
+      }).filter(r => r.n >= (groups.length <= 2 ? groups.length : Math.ceil(groups.length * 0.6))).sort((a, b) => b.score - a.score);
+    };
+    let hits = [], approx = false;
+    if (searching) {
+      if (intent) {
+        hits = idx.filter(it => it.intent === intent).map(it => ({ it, score: 1 }));
+      } else {
+        hits = rank(false);
+        if (!hits.length) { hits = rank(true); approx = hits.length > 0; }
+      }
+    }
+    const GROUPS = [
+      ['company', 'From ' + p.company, 'Your own policies, responsibilities and processes.'],
+      ['state', p.state + ' law', 'What the state requires, regardless of company policy.'],
+      ['federal', 'Federal law', 'The national floor. Where the state is stronger, the state rule applies to you.'],
+      ['documents', 'Documents', 'Matched on the title, the summary, and the text inside the file itself.'],
+      ['contacts', 'People', 'Resolved from your department and your site.']
+    ];
+    const ten = this.tenureFrom(x.start);
+    const tab = this.state.tab;
+    const phone = this.state.device === 'phone';
+
+    const origins = ['All', 'Company', 'State', 'Federal'];
+    const f = this.state.filter;
+    const rights = p.rights.filter(r => {
+      if (f === 'All') return true;
+      if (f === 'State') return /state|Collective|Contractor status/.test(r.origin) && !/Federal/.test(r.origin);
+      if (f === 'Federal') return /Federal/.test(r.origin);
+      return /Company|policy|Brokerage|Collective|agreement/.test(r.origin) && !/state|Federal/.test(r.origin);
+    });
+
+    const s0 = this.state;
+    const orgSrc = ORG[s0.persona];
+    const initials = nm => nm ? nm.trim().split(/\s+/)[0].charAt(0).toLowerCase() + '.' + nm.trim().split(/\s+/).slice(-1)[0].toLowerCase().replace(/[^a-z]/g, '') + '@' + orgSrc.domain : '';
+    const orgNodes = orgSrc.nodes.map((n, i) => ({
+      id: n[0], name: n[1] || '', title: n[2], dept: n[3], site: n[4], type: n[5] || '',
+      mgr: n[6] || null, flag: n[7] || '', dotted: n[8] || '', open: (n[7] || '') === 'open',
+      label: n[1] || 'Open role',
+      email: n[1] ? initials(n[1]) : '', phone: n[1] ? orgSrc.base + String(10 + i * 3) : ''
+    }));
+    const orgById = {};
+    orgNodes.forEach(n => { orgById[n.id] = n; });
+    const orgDepts = orgNodes.map(n => n.dept).filter((d, i, a) => a.indexOf(d) === i);
+    const focusTo = id => () => this.setState({ focus: id, orgQuery: '' });
+    const deco = n => Object.assign({}, n, {
+      select: focusTo(n.id),
+      meta: [n.title, n.dept].filter(Boolean).join(' \u00b7 '),
+      sub: [n.site, n.type].filter(Boolean).join(' \u00b7 '),
+      flagLabel: n.flag === 'you' ? 'You' : n.flag === 'leave' ? 'On leave' : '',
+      flagColor: n.flag === 'you' ? CY : n.flag === 'open' ? MG : NT
+    });
+    const focusRaw = orgById[s0.focus] || orgById.me || orgNodes[0];
+    const focusNode = Object.assign(deco(focusRaw), {
+      dottedNode: focusRaw.dotted && orgById[focusRaw.dotted] ? deco(orgById[focusRaw.dotted]) : null
+    });
+    const chain = (function () {
+      const out = [];
+      let cur = orgById[focusRaw.mgr];
+      let guard = 0;
+      while (cur && guard++ < 12) { out.unshift(deco(cur)); cur = orgById[cur.mgr]; }
+      return out;
+    })();
+    const reports = orgNodes.filter(n => n.mgr === focusRaw.id).map(deco);
+    const peers = orgNodes.filter(n => n.mgr === focusRaw.mgr && n.id !== focusRaw.id).map(deco);
+    const dottedInbound = orgNodes.filter(n => n.dotted === focusRaw.id).map(deco);
+    const oq = (s0.orgQuery || '').trim().toLowerCase();
+    const orgMatches = oq.length > 1
+      ? orgNodes.filter(n => (n.label + ' ' + n.title + ' ' + n.dept + ' ' + n.site).toLowerCase().indexOf(oq) >= 0).map(deco)
+      : [];
+    const orgOutline = (function () {
+      const out = [];
+      const walk = (id, level) => {
+        const n = orgById[id];
+        out.push(Object.assign(deco(n), {
+          indent: (level * (this.state.device === 'phone' ? 12 : 22)) + 'px',
+          isFocus: n.id === focusRaw.id,
+          nameColor: n.id === focusRaw.id ? CY : n.open ? 'var(--color-neutral-600)' : 'var(--color-text)'
+        }));
+        orgNodes.filter(x => x.mgr === id).forEach(x => walk(x.id, level + 1));
+      };
+      orgNodes.filter(n => !n.mgr).forEach(n => walk(n.id, 0));
+      return out;
+    }).call(this);
+
+    const titles = {
+      home: 'Everything that applies to you, in one place.',
+      role: 'What your role owns — and what it does not.',
+      rights: 'What you can claim, and when.',
+      time: 'Your time, your hours, and the rules behind them.',
+      docs: 'The documents that reached you, and who to ask.',
+      org: 'Who does what, and who to go to.'
+    };
+    const intros = {
+      org: 'The whole company, not just your branch \u2014 everybody here can see everybody. Start on yourself, tap any name to move through it, and search when you already know who you want. Open roles are shown as openings rather than hidden, and a dotted line means a second reporting line that is real but not managerial.',
+      home: 'You are ' + p.role + ' in ' + p.dept + ', ' + p.type.toLowerCase() + ', based in ' + p.place + '. Every answer below is filtered to that record — not a generic handbook.',
+      role: 'Responsibilities are written by your department and reviewed by your manager. If something here is wrong, the report link at the foot of the page goes straight to an admin queue.',
+      rights: 'Three sources, one list: what the company gives you, what ' + p.state + ' requires, and what federal law adds. Plain-language summaries — the linked source governs.',
+      time: 'Accrual, hours, breaks and overtime, with the origin of each rule named. Where ' + p.state + ' is stronger than the federal rule, the state rule is the one that applies to you.',
+      docs: 'Uploaded by your admin and routed by department, role and employee type. Some are for everyone, some for your department, one or two only for you.'
+    };
+
+    return {
+      personaChips: Object.keys(P).map(k => ({
+        label: P[k].label, css: this.chipDark(k === this.state.persona),
+        select: () => this.setState({ persona: k, filter: 'All', focus: 'me', orgQuery: '' })
+      })),
+      deviceChips: [{ k: 'phone', l: 'Phone' }, { k: 'desktop', l: 'Desktop' }].map(d => ({
+        label: d.l, css: this.chipDark(d.k === this.state.device), select: () => this.setState({ device: d.k })
+      })),
+      tabs: TABS.map(t => ({ label: t.label, css: this.tabCss(t.key === tab), select: () => this.setState({ tab: t.key }) })),
+
+      shellMax: phone ? '412px' : '1060px',
+      pad: phone ? '24px 22px 32px' : '38px 44px 46px',
+      h1: phone ? '29px' : '39px',
+      h2: phone ? '21px' : '25px',
+      gridCols: phone ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+      dutyCols: phone ? '1fr' : '178px 1fr',
+      rightCols: phone ? '1fr' : '210px 1fr',
+
+      company: p.company,
+      industryLabel: p.industry,
+      metaLine: p.role + ' · ' + p.dept + ' · ' + ten.long + ' with the company · ' + p.place,
+      pageTitle: titles[tab],
+      pageIntro: intros[tab],
+      jurisdictionPhrase: p.state + ' and United States federal rules',
+      hrName: p.hr,
+
+      query: this.state.query,
+      setQuery: e => this.setState({ query: e.target.value }),
+      clearQuery: () => this.setState({ query: '' }),
+      searchPlaceholder: 'Search everything you can see — try "missed break pay"',
+      isSearching: searching,
+      showHeader: !searching,
+      showSuggestions: !searching,
+      suggestions: ['how much PTO do I have', 'parental leave', 'who do I ask', 'overtime', 'how long have I been here'].map(l => ({
+        label: l, select: () => this.setState({ query: l })
+      })),
+      resultCols: phone ? '1fr' : '190px 1fr',
+      resultMeta: hits.length
+        ? hits.length + (hits.length === 1 ? ' result' : ' results') + (approx ? ' · nothing matched those exact words, so these are the closest related pages' : ' · filtered to what you are allowed to see')
+        : 'No results · this is logged for your admin',
+      resultTitle: hits.length ? '“' + this.state.query.trim() + '”' : 'Nothing here answers that.',
+      resultIntro: hits.length
+        ? 'Grouped by where the answer comes from, because company policy, ' + p.state + ' law and federal law are different things with different routes. Results you cannot open yet are shown with the date they unlock.'
+        : 'Rather than a dead end: the person whose job it is to answer this, for your department and your site. Your question is also logged for whoever maintains this handbook, so the next person searching it finds a page.',
+      resultGroups: GROUPS.map(([key, label, note]) => ({
+        key, label, note,
+        items: hits.filter(r => r.it.group === key).map(r => ({
+          kind: r.it.kind, color: r.it.color, title: r.it.title,
+          text: r.it.text.length > 260 ? r.it.text.slice(0, 258) + '…' : r.it.text,
+          action: r.it.action,
+          state: r.it.locked || 'Available to you now',
+          stateColor: r.it.locked ? MG : 'var(--color-neutral-600)',
+          found: r.it.group === 'documents' && terms.some(t => r.it.title.toLowerCase().indexOf(t) < 0)
+            ? 'matched inside the file' : 'matched on the summary'
+        }))
+      })).filter(g => g.items.length),
+      askTitle: hits.length ? 'Not what you meant?' : 'Ask a person instead',
+      askIntro: hits.length
+        ? 'Search reads titles, summaries, the body of every page you can see, and the text inside your documents. If none of that had it, the answer is with a person.'
+        : 'One tap. The email arrives with your question, your role and the page you were on already in it, so nobody has to ask you three questions first.',
+      askPurpose: p.contacts[0].purpose,
+      askName: p.contacts[0].name,
+      askRole: p.contacts[0].title,
+      askAbout: p.contacts[0].about,
+      askPhone: p.contacts[0].phone,
+      askMailto: 'mailto:' + p.contacts[0].email + '?subject=' + encodeURIComponent('Question from ' + p.name + ' (' + p.role + ')') + '&body=' + encodeURIComponent((this.state.query.trim() ? 'I searched for “' + this.state.query.trim() + '” and did not find an answer.' : 'I have a question.') + '\n\n' + p.name + ' · ' + p.role + ' · ' + p.dept + ' · ' + x.site + ' · employee ID ' + x.empId + '\nSent from the ' + p.company + ' handbook.'),
+      askRoutes: p.escalation.slice(0, 3).map(e => ({ who: e.who, when: e.when })),
+      askLogged: 'Nothing you search is shown to your manager. Queries are counted, without your name attached, so whoever maintains this can see what is missing — a search that finds nothing is treated as a page somebody needs.',
+
+      isNewHire: tab === 'home' && ten.days >= 0 && ten.days < 90 && !searching,
+      statusLine: ten.days < 0
+        ? 'Not started yet · first day ' + ten.since
+        : ten.days < 90
+        ? 'New hire · day ' + ten.days + ' of your first 90 · ' + ten.long + ' with ' + p.company
+        : ten.long + ' with ' + p.company + ' · since ' + ten.since,
+      statusColor: ten.days < 90 ? MG : 'var(--color-neutral-600)',
+      newHireLine: 'Day ' + ten.days + '. You started on ' + ten.since + '. Nothing here is a task list somebody is checking — it is the five things new people in ' + p.dept + ' say they wish they had known in week one.',
+      newHirePct: Math.min(100, Math.round(ten.days / 90 * 100)) + '%',
+      onboarding: [
+        { when: 'Waiting on you', color: MG, title: p.docs[0].title, note: p.docs[0].status + '. ' + p.docs[0].summary.split('.')[0] + '.' },
+        { when: 'Week one', color: CY, title: 'Know your first escalation', note: p.escalation[0].who + ' — ' + p.escalation[0].when },
+        { when: 'Week one', color: CY, title: p.duties[0].title, note: p.duties[0].detail },
+        { when: 'Know the rule', color: MG, title: p.time.rules[0].title, note: p.time.rules[0].detail },
+        { when: 'Your dates', color: MG, title: x.next, note: 'Nothing to do today except know the date. It is on the Rights and eligibility tab with the rest.' },
+        { when: 'Anything else', color: CY, title: p.contacts[0].name + ' — ' + p.contacts[0].title, note: p.contacts[0].about }
+      ],
+      signedInMethod: x.method,
+      signedInLine: p.name + ' · ' + p.role + ' · ' + p.dept + ' · ' + p.type + ' · ' + x.site + ' · employee ID ' + x.empId,
+      deptName: p.dept,
+      pinCols: phone ? '1fr' : '170px 1fr',
+      pinned: x.pinned.map(pin => {
+        const key = this.state.persona + '·' + pin.title;
+        const done = !!this.state.acked[key];
+        const ackable = /Waiting on you/.test(pin.kind);
+        return Object.assign({}, pin, {
+          note: ackable && done ? 'Acknowledged just now. Your admin sees the date, not what you thought of it.' : pin.note,
+          ackable,
+          ackLabel: done ? 'Acknowledged ✓' : 'I have read this',
+          ackCss: 'font-size:12.5px; padding:6px 12px; cursor:pointer; border:1px solid '
+            + (done ? 'var(--color-neutral-400); background:transparent; color:var(--color-neutral-700);' : 'var(--color-accent); background:var(--color-accent); color:#fff;'),
+          ack: () => this.setState({ acked: Object.assign({}, this.state.acked, { [key]: !done }) })
+        });
+      }),
+      upcoming: p.rights.filter(r => /^Eligible on|^Due /.test(r.verdict)).map(r => ({
+        when: r.verdict.replace('Eligible on ', '').replace('Due ', ''),
+        origin: r.origin,
+        title: r.title,
+        what: r.what,
+        notice: r.verdictNote + ' You will get a note two weeks before, and nothing happens automatically — enrolling or claiming is still yours to do.'
+      })),
+      hasUpcoming: p.rights.some(r => /^Eligible on|^Due /.test(r.verdict)),
+      upcomingNote: 'Dated, not vague. Each one is a real date computed from your start date and your employee type — the only thing to do today is know it.',
+      record: [
+        { label: 'Department', value: p.dept, note: 'Decides which playbook and which department documents reach you.', size: '20px' },
+        { label: 'Role', value: p.role, note: 'Decides your responsibilities, your escalation path and your role documents.', size: '20px' },
+        { label: 'Employee type', value: p.type, note: 'Decides which benefits, hour rules and agreements apply to you.', size: '20px' },
+        { label: 'Site and jurisdiction', value: x.site, note: p.state + ', ' + p.country + '. State rules follow the site, not the head office.', size: '20px' },
+        { label: 'Time with the company', value: ten.long, note: 'Since ' + ten.since + ' · ' + ten.days + ' days. Tenure is what unlocks dated entitlements.', size: '27px' },
+        { label: 'Next date that changes something', value: x.next, note: 'Nothing to do today except know it.', size: '17px' }
+      ],
+
+      isHome: tab === 'home' && !searching, isRole: tab === 'role' && !searching, isRights: tab === 'rights' && !searching, isTime: tab === 'time' && !searching, isDocs: tab === 'docs' && !searching, isOrg: tab === 'org' && !searching,
+
+      homeStats: p.stats,
+      quickAnswers: [
+        { q: 'What am I actually responsible for?', a: p.duties[0].title + ' — ' + p.duties[0].detail, source: 'From your department playbook · full list on My role' },
+        { q: 'What can I claim right now?', a: p.rights.filter(r => /now|Applies|Read this/.test(r.verdict)).length + ' of ' + p.rights.length + ' entitlements are open to you today. The rest have dates, not maybes.', source: 'From your record and ' + p.state + ' rules · full list on Rights and eligibility' },
+        { q: 'How much time off do I have?', a: p.time.stats[0].label + ': ' + p.time.stats[0].value + '. ' + p.time.stats[0].note, source: 'From your accrual record · detail on Time and hours' },
+        { q: 'Who do I ask when this page does not answer it?', a: p.contacts[0].name + ', ' + p.contacts[0].title + '. ' + p.contacts[0].about, source: 'Resolved from your department and site' }
+      ],
+      todos: [
+        { title: p.docs[0].title, note: p.docs[0].status + ' · ' + p.docs[0].summary.split('.')[0] + '.' },
+        { title: 'Check the two entitlements with dates on them', note: 'Knowing the date is the point. Nothing to do today except know it.' },
+        { title: 'Tell us what is missing', note: 'A search that finds nothing, or a page that is wrong, goes into the admin queue with this page attached.' }
+      ],
+
+      duties: p.duties,
+      notYours: p.notYours.map(text => ({ text })),
+      escalation: p.escalation,
+
+      rightFilters: origins.map(o => ({
+        label: o === 'State' ? p.state + ' and agreements' : o === 'Company' ? 'Company' : o,
+        css: this.filterCss(o === f), select: () => this.setState({ filter: o })
+      })),
+      rights: rights.map(r => ({ ...r, originColor: r.color, sourceLabel: r.sourceLabel, verified: r.verified })),
+
+      timeStats: p.time.stats,
+      accrualNote: p.time.accrualNote,
+      accrualPct: p.time.accrualPct,
+      accrualCaption: p.time.accrualCaption,
+      timeRules: p.time.rules,
+      ptoSteps: p.time.steps,
+
+      docGroups: this.groupDocs(p.docs),
+      contacts: p.contacts.map(c => {
+        const hit = orgNodes.find(n => n.name === c.name);
+        return Object.assign({}, c, {
+          inOrg: !!hit,
+          seeInOrg: hit ? () => this.setState({ tab: 'org', focus: hit.id, orgQuery: '' }) : () => {}
+        });
+      }),
+
+      orgCount: orgNodes.filter(n => !n.open).length + ' people \u00b7 ' + orgNodes.filter(n => n.open).length + ' open roles \u00b7 ' + orgDepts.length + ' departments',
+      orgQuery: s0.orgQuery,
+      setOrgQuery: e => this.setState({ orgQuery: e.target.value }),
+      orgSearching: (s0.orgQuery || '').trim().length > 1,
+      orgPlaceholder: 'Find a person, a title, a department or a site',
+      jumpToMe: () => this.setState({ focus: 'me', orgQuery: '' }),
+      jumpToTop: () => this.setState({ focus: (orgNodes.find(n => !n.mgr) || {}).id, orgQuery: '' }),
+      isOnMe: focusNode.flag === 'you',
+      chain: chain.map(n => ({ label: n.label, sub: n.title, select: n.select })),
+      hasChain: chain.length > 0,
+      focusName: focusNode.label,
+      focusTitle: focusNode.title,
+      focusDept: focusNode.dept,
+      focusLine: [focusNode.site, focusNode.type].filter(Boolean).join(' \u00b7 '),
+      focusFlag: focusNode.open ? 'Unfilled position' : focusNode.flagLabel,
+      focusFlagColor: focusNode.flagColor,
+      hasFocusFlag: !!focusNode.flagLabel,
+      focusEmail: focusNode.email,
+      focusPhone: focusNode.phone,
+      focusMailto: focusNode.email ? 'mailto:' + focusNode.email : '',
+      focusTel: focusNode.phone ? 'tel:' + focusNode.phone.replace(/[^0-9]/g, '') : '',
+      hasFocusContact: !!focusNode.email,
+      noFocusContact2: !focusNode.email,
+      focusNoContact: focusNode.open
+        ? 'An opening, not a person. Your people team can tell you where it is in the process.'
+        : 'No direct line published. Reach them through their manager or the people team.',
+      focusDotted: focusNode.dottedNode ? focusNode.dottedNode.label + ' \u2014 ' + focusNode.dottedNode.title : '',
+      hasFocusDotted: !!focusNode.dottedNode,
+      focusDottedSelect: focusNode.dottedNode ? focusNode.dottedNode.select : () => {},
+      dottedInbound: dottedInbound,
+      hasDottedInbound: dottedInbound.length > 0,
+      reports: reports, hasReports: reports.length > 0,
+      reportsLabel: reports.length + (reports.length === 1 ? ' person reports' : ' people report') + ' to ' + (focusNode.flag === 'you' ? 'you' : focusNode.label),
+      peers: peers, hasPeers: peers.length > 0, noPeersFlag: peers.length === 0,
+      peersLabel: focusNode.flag === 'you' ? 'Alongside you' : 'Alongside ' + focusNode.label,
+      noPeers: 'Nobody else reports to the same person.',
+      orgMatches: orgMatches, noOrgMatches: orgMatches.length === 0,
+      orgOutline: orgOutline,
+      orgFooter: 'Reporting lines come from the people records your admin maintains \u2014 imported where the roster carried a manager column, corrected by hand where it did not. If a line here is wrong, the report link at the foot of this page reaches the admin who can fix it.'
+    };
+  }
+}
+</script>
+</body>
+</html>
