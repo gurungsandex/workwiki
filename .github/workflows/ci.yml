@@ -74,6 +74,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The migration runner and the worker must survive bundling: the
+      # production image runs them as plain JavaScript.
+      - name: Build the node entrypoints
+        run: npm run build:node
+
+      - name: The bundled migrate runs against the fixture database
+        run: node dist/migrate.js
+
       # Production dependencies only: dev-tool advisories do not ship.
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high

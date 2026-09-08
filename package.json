@@ -10,7 +10,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "worker": "node --enable-source-maps ./dist-worker/worker/index.js",
+    "worker": "node dist/worker.js",
     "worker:dev": "tsx src/worker/index.ts",
     "migrate": "tsx scripts/migrate.ts",
     "seed": "tsx scripts/seed.ts",
@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:no-slug-literals": "node scripts/check-no-slug-literals.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "build:node": "node scripts/build-node-entrypoints.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1128.0",
@@ -42,6 +43,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.4",
     "tsx": "^4.23.13",
