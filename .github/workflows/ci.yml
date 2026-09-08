@@ -1,9 +1,15 @@
 name: CI
 
 on:
+  # A branch push and its pull request fired two identical runs of everything.
+  # Pull requests are the review surface; pushes matter on the default branch.
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   NODE_VERSION: '22'

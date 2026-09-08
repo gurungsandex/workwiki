@@ -82,20 +82,43 @@ function formatFailure(error: z.ZodError): string {
   return lines.join('\n');
 }
 
+/**
+ * Thrown, never exited on.
+ *
+ * `process.exit` inside a library function is uncatchable, so a caller that
+ * legitimately copes with missing configuration — the root layout renders
+ * without a company name when there is no database yet — cannot. Only the
+ * entrypoints below decide to exit, and they say what is wrong first.
+ */
+export class ConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConfigError';
+  }
+}
+
 let cached: Env | null = null;
 
 /** Parse and cache the environment. Throws a human-readable error, never a stack trace. */
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   if (cached) return cached;
   const parsed = schema.safeParse(source);
-  if (!parsed.success) {
-    const message = formatFailure(parsed.error);
-    if (source.NODE_ENV === 'test') throw new Error(message);
-    process.stderr.write(`\n${message}\n\n`);
-    process.exit(1);
-  }
+  if (!parsed.success) throw new ConfigError(formatFailure(parsed.error));
   cached = parsed.data;
   return cached;
+}
+
+/**
+ * Report a configuration failure the way an operator needs it — the variable,
+ * the shape expected, an example — and stop. For CLI entrypoints and the
+ * server's own boot check; never for a render.
+ */
+export function exitOnConfigError(error: unknown): never {
+  if (error instanceof ConfigError) {
+    process.stderr.write(`\n${error.message}\n\n`);
+    process.exit(1);
+  }
+  throw error;
 }
 
 /**
@@ -109,17 +132,16 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
 export function loadDatabaseUrl(source: NodeJS.ProcessEnv = process.env): string {
   const parsed = schema.shape.DATABASE_URL.safeParse(source.DATABASE_URL);
   if (!parsed.success) {
-    const message = [
-      'Configuration is not valid. Nothing ran.',
-      '',
-      '  DATABASE_URL',
-      `    problem:  ${parsed.error.issues[0]?.message ?? 'is missing'}`,
-      `    example:  ${EXAMPLES.DATABASE_URL}`,
-      '',
-    ].join('\n');
-    if (source.NODE_ENV === 'test') throw new Error(message);
-    process.stderr.write(`\n${message}\n\n`);
-    process.exit(1);
+    throw new ConfigError(
+      [
+        'Configuration is not valid. Nothing ran.',
+        '',
+        '  DATABASE_URL',
+        `    problem:  ${parsed.error.issues[0]?.message ?? 'is missing'}`,
+        `    example:  ${EXAMPLES.DATABASE_URL}`,
+        '',
+      ].join('\n'),
+    );
   }
   return parsed.data;
 }

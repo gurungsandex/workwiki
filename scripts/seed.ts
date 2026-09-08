@@ -33,10 +33,14 @@ import {
 import { hashPassword } from '../src/lib/auth/password';
 import { publishPage } from '../src/lib/content/mutations';
 import { keyBetween } from '../src/lib/sort-key';
-import { loadDatabaseUrl } from '../src/env';
+import { exitOnConfigError, loadDatabaseUrl } from '../src/env';
 
 // Seeding writes to the database and sends no mail and stores no file.
-loadDatabaseUrl();
+try {
+  loadDatabaseUrl();
+} catch (error) {
+  exitOnConfigError(error);
+}
 
 const args = process.argv.slice(2);
 function arg(name: string): string | undefined {

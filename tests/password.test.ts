@@ -60,3 +60,40 @@ describe('content hash', () => {
     expect(contentHash({ a: 1 })).not.toBe(contentHash({ a: 2 }));
   });
 });
+
+describe('configuration', () => {
+  it('throws rather than exiting, so a caller that copes with it can', async () => {
+    // process.exit inside a library function is uncatchable. The root layout
+    // renders without a company name when there is no database yet, and it can
+    // only do that if the failure is an exception.
+    const { ConfigError, loadDatabaseUrl } = await import('@/env');
+    expect(() => loadDatabaseUrl({} as NodeJS.ProcessEnv)).toThrow(ConfigError);
+    expect(() => loadDatabaseUrl({} as NodeJS.ProcessEnv)).toThrow(/DATABASE_URL/);
+  });
+
+  it('names the variable, the problem and an example', async () => {
+    const { loadDatabaseUrl } = await import('@/env');
+    try {
+      loadDatabaseUrl({ DATABASE_URL: 'mysql://nope' } as unknown as NodeJS.ProcessEnv);
+      expect.unreachable('should have thrown');
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message).toContain('DATABASE_URL');
+      expect(message).toContain('problem:');
+      expect(message).toContain('example:');
+      expect(message).not.toContain('at Object.'); // never a stack trace
+    }
+  });
+
+  it('asks for only the database URL, not the whole configuration', async () => {
+    const { loadDatabaseUrl } = await import('@/env');
+    expect(loadDatabaseUrl({ DATABASE_URL: 'postgres://u:p@h:5432/d' } as unknown as NodeJS.ProcessEnv)).toBe(
+      'postgres://u:p@h:5432/d',
+    );
+  });
+
+  it('rejects a whole environment that is missing its required three', async () => {
+    const { ConfigError, loadEnv } = await import('@/env');
+    expect(() => loadEnv({ DATABASE_URL: 'postgres://u:p@h:5432/d' } as unknown as NodeJS.ProcessEnv)).toThrow(ConfigError);
+  });
+});

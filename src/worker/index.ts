@@ -12,11 +12,16 @@
 import { PgBoss } from 'pg-boss';
 import { sql } from 'drizzle-orm';
 import { db, getPool } from '../db/client';
-import { loadDatabaseUrl } from '../env';
+import { exitOnConfigError, loadDatabaseUrl } from '../env';
 
 // The worker talks to Postgres and, for link checks, to the open internet.
 // It needs neither a session secret nor object-store credentials.
-const databaseUrl = loadDatabaseUrl();
+let databaseUrl: string;
+try {
+  databaseUrl = loadDatabaseUrl();
+} catch (error) {
+  exitOnConfigError(error);
+}
 const buildId = process.env.BUILD_ID ?? 'dev';
 
 const QUEUES = {
