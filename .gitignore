@@ -1,0 +1,16 @@
+node_modules/
+.next/
+dist-worker/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+.env
+.env.local
+.env.*.local
+backups/
+*.log
+.DS_Store
+e2e/.auth/
+test-results/
+playwright-report/
