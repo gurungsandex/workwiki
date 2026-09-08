@@ -1,0 +1,132 @@
+# Everything a small company needs to evaluate this runs from `docker compose up`.
+#
+# Four containers: the app, Postgres, MinIO for the object store, and the
+# worker. Nothing external is required. Set the three required values in .env
+# first — the app refuses to start without them, and says which one is missing.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-workwiki}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-workwiki}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-workwiki} -d ${POSTGRES_DB:-workwiki}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Not published to the host: nothing outside this network needs it.
+    expose:
+      - '5432'
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+    volumes:
+      - object-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    expose:
+      - '9000'
+    ports:
+      # The console, for an operator. The API is reached only from the network.
+      - '127.0.0.1:9001:9001'
+
+  # Creates the bucket once, then exits. The bucket is private; there is no
+  # public read policy anywhere in this file, on purpose.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_BUCKET: ${S3_BUCKET:-workwiki}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$S3_ACCESS_KEY_ID $$S3_SECRET_ACCESS_KEY &&
+      mc mb --ignore-existing local/$$S3_BUCKET &&
+      mc anonymous set none local/$$S3_BUCKET
+      "
+    restart: 'no'
+
+  app:
+    build:
+      context: .
+      args:
+        BUILD_ID: ${BUILD_ID:-dev}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL in .env}
+      DATABASE_URL: ${DATABASE_URL:-postgres://workwiki:${POSTGRES_PASSWORD}@db:5432/workwiki}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_BUCKET: ${S3_BUCKET:-workwiki}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MIGRATE_ON_BOOT: ${MIGRATE_ON_BOOT:-true}
+      BUILD_ID: ${BUILD_ID:-dev}
+    command: ['app']
+    ports:
+      # Bound to loopback: put a TLS-terminating proxy in front of it.
+      - '127.0.0.1:${APP_PORT:-3000}:3000'
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+  worker:
+    build:
+      context: .
+      args:
+        BUILD_ID: ${BUILD_ID:-dev}
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      APP_BASE_URL: ${APP_BASE_URL}
+      DATABASE_URL: ${DATABASE_URL:-postgres://workwiki:${POSTGRES_PASSWORD}@db:5432/workwiki}
+      SESSION_SECRET: ${SESSION_SECRET}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_BUCKET: ${S3_BUCKET:-workwiki}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      MIGRATE_ON_BOOT: 'false'
+      BUILD_ID: ${BUILD_ID:-dev}
+    command: ['worker']
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  db-data:
+  object-data:

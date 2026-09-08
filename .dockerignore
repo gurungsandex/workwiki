@@ -1,0 +1,10 @@
+.git
+.next
+node_modules
+docs
+dist
+dist-worker
+*.log
+.env
+.env.*
+coverage

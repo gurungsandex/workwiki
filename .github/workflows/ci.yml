@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  # A branch push and its pull request fired two identical runs of everything.
+  # Pull requests are the review surface; pushes matter on the default branch.
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: workwiki
+          POSTGRES_PASSWORD: workwiki
+          POSTGRES_DB: workwiki_test
+        options: >-
+          --health-cmd "pg_isready -U workwiki -d workwiki_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgres://workwiki:workwiki@localhost:5432/workwiki_test
+      TEST_DATABASE_URL: postgres://workwiki:workwiki@localhost:5432/workwiki_test
+      APP_BASE_URL: http://localhost:3000
+      SESSION_SECRET: ci-session-secret-that-is-long-enough-to-pass-validation
+      S3_ACCESS_KEY_ID: ci
+      S3_SECRET_ACCESS_KEY: ci-secret
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      # The invariants that must survive every future session.
+      - name: No company vocabulary in application code
+        run: npm run check:no-slug-literals
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Migrations are forward-only and run against a real Postgres 16.
+      - name: Migrate
+        run: npm run migrate
+
+      # …and again, to prove they are idempotent and checksum-stable.
+      - name: Migrate again (idempotence)
+        run: npm run migrate
+
+      - name: Seed a populated fixture database
+        run: npm run seed -- --email ci@example.com --password "a fine long ci passphrase" --demo
+
+      - name: Migrate against the populated database
+        run: npm run migrate
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # The migration runner and the worker must survive bundling: the
+      # production image runs them as plain JavaScript.
+      - name: Build the node entrypoints
+        run: npm run build:node
+
+      - name: The bundled migrate runs against the fixture database
+        run: node dist/migrate.js
+
+      # Production dependencies only: dev-tool advisories do not ship.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  browser:
+    runs-on: ubuntu-latest
+    needs: verify
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: workwiki
+          POSTGRES_PASSWORD: workwiki
+          POSTGRES_DB: workwiki_e2e
+        options: >-
+          --health-cmd "pg_isready -U workwiki -d workwiki_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports:
+          - 5432:5432
+
+    env:
+      # scripts/e2e.sh sets APP_BASE_URL itself, to the origin it serves on —
+      # every mutation checks the request Origin against it.
+      DATABASE_URL: postgres://workwiki:workwiki@localhost:5432/workwiki_e2e
+      SESSION_SECRET: ci-session-secret-that-is-long-enough-to-pass-validation
+      S3_ACCESS_KEY_ID: ci
+      S3_SECRET_ACCESS_KEY: ci-secret
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run migrate
+      # Builds, seeds, serves and drives the real application in a browser.
+      - run: ./scripts/e2e.sh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  image:
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image
+        run: docker build --build-arg BUILD_ID=${{ github.sha }} -t workwiki:${{ github.sha }} .
