@@ -20,7 +20,11 @@ ARG BUILD_ID=dev
 ENV BUILD_ID=${BUILD_ID}
 # NODE_ENV is deliberately not set here: `next build` sets its own, and a build
 # run with NODE_ENV=development produces a bundle that will not render.
-# The build needs no database and no secret — every route is dynamic.
+#
+# This build needs no database URL and no secret. Every route is dynamic, the
+# pool is created on first query rather than at import, and the environment is
+# validated when a *server* starts (src/instrumentation.ts) — so an image can
+# be built in CI without handing CI production credentials.
 RUN npm run build && npm run build:node
 
 # Only what the two entrypoints keep external.

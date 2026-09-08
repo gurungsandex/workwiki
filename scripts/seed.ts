@@ -33,9 +33,10 @@ import {
 import { hashPassword } from '../src/lib/auth/password';
 import { publishPage } from '../src/lib/content/mutations';
 import { keyBetween } from '../src/lib/sort-key';
-import { loadEnv } from '../src/env';
+import { loadDatabaseUrl } from '../src/env';
 
-loadEnv();
+// Seeding writes to the database and sends no mail and stores no file.
+loadDatabaseUrl();
 
 const args = process.argv.slice(2);
 function arg(name: string): string | undefined {

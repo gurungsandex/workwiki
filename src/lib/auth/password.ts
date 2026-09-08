@@ -1,5 +1,5 @@
 import { hash, verify } from '@node-rs/argon2';
-import { env } from '@/env';
+import { loadArgon2Params } from '@/env';
 import COMMON_PASSWORDS from './common-passwords.json' with { type: 'json' };
 
 /**
@@ -12,11 +12,12 @@ import COMMON_PASSWORDS from './common-passwords.json' with { type: 'json' };
 const ARGON2ID = 2;
 
 function options() {
+  const params = loadArgon2Params();
   return {
     algorithm: ARGON2ID,
-    memoryCost: env.ARGON2_MEMORY_KIB,
-    timeCost: env.ARGON2_TIME_COST,
-    parallelism: env.ARGON2_PARALLELISM,
+    memoryCost: params.ARGON2_MEMORY_KIB,
+    timeCost: params.ARGON2_TIME_COST,
+    parallelism: params.ARGON2_PARALLELISM,
   };
 }
 
@@ -42,10 +43,11 @@ export function passwordNeedsRehash(storedHash: string): boolean {
   if (!match) return true; // not argon2id at all, or unparseable: rehash it
   const [, version, memory, time, parallelism] = match as unknown as [string, string, string, string, string];
   if (Number(version) < 19) return true;
+  const params = loadArgon2Params();
   return (
-    Number(memory) < env.ARGON2_MEMORY_KIB ||
-    Number(time) < env.ARGON2_TIME_COST ||
-    Number(parallelism) < env.ARGON2_PARALLELISM
+    Number(memory) < params.ARGON2_MEMORY_KIB ||
+    Number(time) < params.ARGON2_TIME_COST ||
+    Number(parallelism) < params.ARGON2_PARALLELISM
   );
 }
 

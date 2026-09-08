@@ -104,6 +104,8 @@ jobs:
           - 5432:5432
 
     env:
+      # scripts/e2e.sh sets APP_BASE_URL itself, to the origin it serves on —
+      # every mutation checks the request Origin against it.
       DATABASE_URL: postgres://workwiki:workwiki@localhost:5432/workwiki_e2e
       SESSION_SECRET: ci-session-secret-that-is-long-enough-to-pass-validation
       S3_ACCESS_KEY_ID: ci

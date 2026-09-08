@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
-import { loadEnv } from '../src/env';
+import { loadDatabaseUrl } from '../src/env';
 
 const DIR = join(process.cwd(), 'drizzle');
 
@@ -86,8 +86,8 @@ export async function pendingMigrations(query: (sql: string) => Promise<{ rows: 
 
 const isEntrypoint = process.argv[1]?.endsWith('migrate.ts') || process.argv[1]?.endsWith('migrate.js');
 if (isEntrypoint) {
-  const env = loadEnv();
-  const client = new pg.Client({ connectionString: env.DATABASE_URL });
+  // Migrating needs one thing, and asks for one thing.
+  const client = new pg.Client({ connectionString: loadDatabaseUrl() });
   await client.connect();
   try {
     const ran = await migrate(client);

@@ -12,9 +12,12 @@
 import { PgBoss } from 'pg-boss';
 import { sql } from 'drizzle-orm';
 import { db, getPool } from '../db/client';
-import { loadEnv } from '../env';
+import { loadDatabaseUrl } from '../env';
 
-const env = loadEnv();
+// The worker talks to Postgres and, for link checks, to the open internet.
+// It needs neither a session secret nor object-store credentials.
+const databaseUrl = loadDatabaseUrl();
+const buildId = process.env.BUILD_ID ?? 'dev';
 
 const QUEUES = {
   sweepExpired: 'sweep-expired',
@@ -107,7 +110,7 @@ async function reachable_(href: string): Promise<boolean> {
 }
 
 async function main(): Promise<void> {
-  const boss = new PgBoss({ connectionString: env.DATABASE_URL, schema: 'pgboss' });
+  const boss = new PgBoss({ connectionString: databaseUrl, schema: 'pgboss' });
 
   boss.on('error', (error: unknown) => log('boss.error', { message: (error as Error).message }));
   await boss.start();
@@ -125,7 +128,7 @@ async function main(): Promise<void> {
   await boss.schedule(QUEUES.sweepExpired, '17 3 * * *');
   await boss.schedule(QUEUES.checkLinks, '43 4 * * 1');
 
-  log('worker.started', { build: env.BUILD_ID });
+  log('worker.started', { build: buildId });
 
   const shutdown = async (signal: string) => {
     log('worker.stopping', { signal });

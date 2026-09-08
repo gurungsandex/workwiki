@@ -98,6 +98,57 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   return cached;
 }
 
+/**
+ * The database URL alone.
+ *
+ * The migration runner, the seeder and the worker connect to Postgres and do
+ * nothing else — asking them for a base URL, a session secret and object-store
+ * credentials they never read is how `npm run migrate` ends up failing for a
+ * reason that has nothing to do with migrating.
+ */
+export function loadDatabaseUrl(source: NodeJS.ProcessEnv = process.env): string {
+  const parsed = schema.shape.DATABASE_URL.safeParse(source.DATABASE_URL);
+  if (!parsed.success) {
+    const message = [
+      'Configuration is not valid. Nothing ran.',
+      '',
+      '  DATABASE_URL',
+      `    problem:  ${parsed.error.issues[0]?.message ?? 'is missing'}`,
+      `    example:  ${EXAMPLES.DATABASE_URL}`,
+      '',
+    ].join('\n');
+    if (source.NODE_ENV === 'test') throw new Error(message);
+    process.stderr.write(`\n${message}\n\n`);
+    process.exit(1);
+  }
+  return parsed.data;
+}
+
+/**
+ * The Argon2id parameters alone.
+ *
+ * Hashing a password is independent of every other setting, and the seeder
+ * does it while having no business knowing the object-store credentials.
+ * These have safe defaults, so this never exits — it only rejects a value an
+ * operator typed wrongly.
+ */
+export function loadArgon2Params(source: NodeJS.ProcessEnv = process.env) {
+  const shape = z.object({
+    ARGON2_MEMORY_KIB: schema.shape.ARGON2_MEMORY_KIB,
+    ARGON2_TIME_COST: schema.shape.ARGON2_TIME_COST,
+    ARGON2_PARALLELISM: schema.shape.ARGON2_PARALLELISM,
+  });
+  const parsed = shape.safeParse(source);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    throw new Error(
+      `ARGON2 parameters are not valid: ${issue?.path.join('.')} ${issue?.message}. ` +
+        'See .env.example for the shape of each.',
+    );
+  }
+  return parsed.data;
+}
+
 /** For tests: validate an arbitrary object without touching the cache or exiting. */
 export function parseEnv(source: Record<string, unknown>) {
   return schema.safeParse(source);
